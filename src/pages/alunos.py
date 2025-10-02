@@ -62,6 +62,8 @@ def show_alunos():
         _mostrar_lista_alunos(alunos_service)
     elif st.session_state.alunos_modo == 'novo':
         _mostrar_formulario_novo_aluno(alunos_service)
+    elif st.session_state.alunos_modo == 'editar':
+        _mostrar_formulario_editar_aluno(alunos_service)
     elif st.session_state.alunos_modo == 'buscar':
         _mostrar_busca_alunos(alunos_service)
     elif st.session_state.alunos_modo == 'stats':
@@ -491,3 +493,243 @@ def _mostrar_detalhes_aluno(alunos_service: AlunosService, aluno_id: str):
         
     except Exception as e:
         st.error(f"❌ Erro ao carregar detalhes: {str(e)}")
+
+def _mostrar_formulario_editar_aluno(alunos_service: AlunosService):
+    """Mostra formulário para editar aluno existente"""
+    
+    # Verificar se tem aluno para editar
+    if 'aluno_editando' not in st.session_state or not st.session_state.aluno_editando:
+        st.error("❌ Nenhum aluno selecionado para edição!")
+        if st.button("📋 Voltar para Lista"):
+            st.session_state.alunos_modo = 'lista'
+            st.rerun()
+        return
+    
+    aluno_id = st.session_state.aluno_editando
+    
+    try:
+        # Carregar dados do aluno
+        aluno = alunos_service.buscar_aluno(aluno_id)
+        
+        if not aluno:
+            st.error("❌ Aluno não encontrado!")
+            if st.button("📋 Voltar para Lista"):
+                st.session_state.alunos_modo = 'lista'
+                st.rerun()
+            return
+        
+        st.markdown(f"### ✏️ Editar Aluno: **{aluno.get('nome', 'N/A')}**")
+        
+        # Botão voltar
+        col1, col2, col3 = st.columns([1, 1, 2])
+        with col1:
+            if st.button("🔙 Voltar para Lista", type="secondary"):
+                st.session_state.alunos_modo = 'lista'
+                del st.session_state.aluno_editando
+                st.rerun()
+        
+        with st.form("form_editar_aluno", clear_on_submit=False):
+            # Dados básicos
+            st.markdown("#### 📝 Dados Básicos")
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                nome = st.text_input(
+                    "👤 Nome Completo *", 
+                    value=aluno.get('nome', ''),
+                    placeholder="Digite o nome completo"
+                )
+                vencimento_dia = st.number_input(
+                    "📅 Dia do Vencimento *", 
+                    min_value=1, 
+                    max_value=28, 
+                    value=int(aluno.get('vencimentoDia', 15))
+                )
+            
+            with col2:
+                status = st.selectbox(
+                    "📊 Status *", 
+                    options=["ativo", "inativo"], 
+                    index=0 if aluno.get('status') == 'ativo' else 1
+                )
+                # Manter a data original ou usar hoje se for reativação
+                ativo_desde_value = aluno.get('ativoDesde', date.today().strftime('%Y-%m-%d'))
+                if isinstance(ativo_desde_value, str):
+                    try:
+                        ativo_desde_date = datetime.strptime(ativo_desde_value, '%Y-%m-%d').date()
+                    except:
+                        ativo_desde_date = date.today()
+                else:
+                    ativo_desde_date = date.today()
+                
+                ativo_desde = st.date_input("📆 Ativo Desde *", value=ativo_desde_date)
+            
+            # Contato
+            st.markdown("#### 📞 Contato")
+            col1, col2 = st.columns(2)
+            
+            contato_atual = aluno.get('contato', {})
+            if not isinstance(contato_atual, dict):
+                contato_atual = {}
+            
+            with col1:
+                telefone = st.text_input(
+                    "📱 Telefone", 
+                    value=contato_atual.get('telefone', ''),
+                    placeholder="(11) 99999-9999"
+                )
+            
+            with col2:
+                email = st.text_input(
+                    "📧 Email", 
+                    value=contato_atual.get('email', ''),
+                    placeholder="aluno@email.com"
+                )
+            
+            # Outros dados
+            st.markdown("#### 🏠 Dados Adicionais")
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                endereco = st.text_input(
+                    "🏠 Endereço", 
+                    value=aluno.get('endereco', ''),
+                    placeholder="Rua, número, bairro"
+                )
+            
+            with col2:
+                turma = st.text_input(
+                    "🥋 Turma", 
+                    value=aluno.get('turma', ''),
+                    placeholder="Ex: Iniciantes, Avançados"
+                )
+            
+            # Informações adicionais para status inativo
+            if status == 'inativo':
+                st.markdown("#### ⏸️ Dados de Inativação")
+                inativo_desde_value = aluno.get('inativoDesde', date.today().strftime('%Y-%m-%d'))
+                if isinstance(inativo_desde_value, str):
+                    try:
+                        inativo_desde_date = datetime.strptime(inativo_desde_value, '%Y-%m-%d').date()
+                    except:
+                        inativo_desde_date = date.today()
+                else:
+                    inativo_desde_date = date.today()
+                
+                inativo_desde = st.date_input("📅 Inativo Desde", value=inativo_desde_date)
+            
+            # Botões
+            st.markdown("---")
+            col1, col2, col3 = st.columns([1, 1, 2])
+            
+            with col1:
+                submitted = st.form_submit_button("✅ Salvar Alterações", type="primary", use_container_width=True)
+            
+            with col2:
+                if st.form_submit_button("🔄 Restaurar", use_container_width=True):
+                    st.rerun()
+            
+            # Processar formulário
+            if submitted:
+                # Validações
+                if not nome or not nome.strip():
+                    st.error("❌ Nome é obrigatório!")
+                    return
+                
+                # Preparar dados de atualização
+                dados_atualizacao = {
+                    'nome': nome.strip(),
+                    'status': status,
+                    'vencimentoDia': vencimento_dia,
+                    'ativoDesde': ativo_desde.strftime('%Y-%m-%d')
+                }
+                
+                # Adicionar contato se preenchido
+                contato = {}
+                if telefone and telefone.strip():
+                    contato['telefone'] = telefone.strip()
+                if email and email.strip():
+                    contato['email'] = email.strip()
+                
+                if contato:
+                    dados_atualizacao['contato'] = contato
+                
+                # Adicionar dados opcionais
+                if endereco and endereco.strip():
+                    dados_atualizacao['endereco'] = endereco.strip()
+                
+                if turma and turma.strip():
+                    dados_atualizacao['turma'] = turma.strip()
+                
+                # Adicionar data de inativação se necessário
+                if status == 'inativo':
+                    dados_atualizacao['inativoDesde'] = inativo_desde.strftime('%Y-%m-%d')
+                else:
+                    # Se mudou para ativo, remover data de inativação
+                    dados_atualizacao['inativoDesde'] = None
+                
+                # Atualizar aluno
+                try:
+                    sucesso = alunos_service.atualizar_aluno(aluno_id, dados_atualizacao)
+                    
+                    if sucesso:
+                        st.success(f"✅ Aluno **{nome}** atualizado com sucesso!")
+                        
+                        # Opções pós-edição
+                        col1, col2, col3 = st.columns(3)
+                        
+                        with col1:
+                            if st.button("📋 Voltar para Lista", type="secondary"):
+                                st.session_state.alunos_modo = 'lista'
+                                del st.session_state.aluno_editando
+                                st.rerun()
+                        
+                        with col2:
+                            if st.button("👁️ Ver Detalhes", type="secondary"):
+                                _mostrar_detalhes_aluno(alunos_service, aluno_id)
+                        
+                        with col3:
+                            if st.button("✏️ Continuar Editando", type="secondary"):
+                                st.rerun()
+                        
+                except Exception as e:
+                    st.error(f"❌ Erro ao atualizar aluno: {str(e)}")
+        
+        # Ações rápidas adicionais
+        st.markdown("---")
+        st.markdown("#### ⚡ Ações Rápidas")
+        
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            if aluno.get('status') == 'ativo':
+                if st.button("⏸️ Inativar Aluno", use_container_width=True):
+                    if alunos_service.inativar_aluno(aluno_id):
+                        st.success("✅ Aluno inativado!")
+                        st.rerun()
+            else:
+                if st.button("▶️ Reativar Aluno", use_container_width=True):
+                    if alunos_service.reativar_aluno(aluno_id):
+                        st.success("✅ Aluno reativado!")
+                        st.rerun()
+        
+        with col2:
+            if st.button("👁️ Ver Detalhes Completos", use_container_width=True):
+                with st.expander("📄 Detalhes Completos", expanded=True):
+                    _mostrar_detalhes_aluno(alunos_service, aluno_id)
+        
+        with col3:
+            if st.button("🎓 Graduações", use_container_width=True):
+                st.info("🚧 Graduações em desenvolvimento...")
+        
+        with col4:
+            if st.button("💰 Pagamentos", use_container_width=True):
+                st.info("🚧 Pagamentos em desenvolvimento...")
+        
+    except Exception as e:
+        st.error(f"❌ Erro ao carregar aluno para edição: {str(e)}")
+        if st.button("📋 Voltar para Lista"):
+            st.session_state.alunos_modo = 'lista'
+            if 'aluno_editando' in st.session_state:
+                del st.session_state.aluno_editando
+            st.rerun()
