@@ -113,7 +113,12 @@ class AuthManager:
                 st.markdown("</div>", unsafe_allow_html=True)
         
         # Informações de desenvolvimento
-        if st.secrets.get("environment", {}).get("debug", False):
+        try:
+            debug_mode = st.secrets.get("environment", {}).get("debug", False)
+        except:
+            debug_mode = False
+            
+        if debug_mode:
             with st.expander("ℹ️ Informações de Desenvolvimento"):
                 st.info("""
                 **Credenciais de teste:**
