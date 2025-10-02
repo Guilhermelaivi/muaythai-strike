@@ -125,8 +125,10 @@ class FirebaseConfig:
             if not self.is_connected():
                 return False
             
-            # Informações de debug
-            if st.secrets.get("environment", {}).get("debug", False):
+            # Informações de debug - apenas em ambiente local
+            import os
+            debug_mode = os.getenv("STREAMLIT_DEBUG", "false").lower() == "true"
+            if debug_mode:
                 st.success("✅ Conexão com Firestore estabelecida!")
                 
                 # Listar coleções existentes

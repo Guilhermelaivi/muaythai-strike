@@ -112,11 +112,9 @@ class AuthManager:
                 
                 st.markdown("</div>", unsafe_allow_html=True)
         
-        # Informações de desenvolvimento
-        try:
-            debug_mode = st.secrets.get("environment", {}).get("debug", False)
-        except:
-            debug_mode = False
+        # Informações de desenvolvimento - apenas em ambiente local
+        import os
+        debug_mode = os.getenv("STREAMLIT_DEBUG", "false").lower() == "true"
             
         if debug_mode:
             with st.expander("ℹ️ Informações de Desenvolvimento"):
