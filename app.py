@@ -53,7 +53,7 @@ def main():
     st.markdown("""
     <div class="main-header">
         <h1>🥋 Sistema de Gestão - Dojo</h1>
-        <p>MVP - Academia de Muay Thai</p>
+        <p>MVP - Academia de Muay Thai - v1.1</p>
     </div>
     """, unsafe_allow_html=True)
     
