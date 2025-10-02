@@ -89,23 +89,28 @@ class AlunosService:
             Lista de dicionários com dados dos alunos
         """
         try:
-            query = self.collection
-            
-            # Aplicar filtro de status se especificado
+            # Para evitar problemas de índices compostos, fazer filtro e ordenação separadamente
             if status:
-                query = query.where('status', '==', status)
-            
-            # Ordenar
-            query = query.order_by(ordenar_por)
-            
-            # Executar consulta
-            docs = query.stream()
+                # Consulta apenas com filtro
+                query = self.collection.where('status', '==', status)
+                docs = query.stream()
+            else:
+                # Consulta apenas com ordenação
+                query = self.collection.order_by(ordenar_por)
+                docs = query.stream()
             
             alunos = []
             for doc in docs:
                 aluno_data = doc.to_dict()
                 aluno_data['id'] = doc.id
                 alunos.append(aluno_data)
+            
+            # Se não houve filtro de status mas queremos ordenar, ordenar no cliente
+            if not status:
+                alunos.sort(key=lambda x: x.get(ordenar_por, ''))
+            elif status and ordenar_por != 'nome':
+                # Se houve filtro E queremos ordenar por outro campo, ordenar no cliente
+                alunos.sort(key=lambda x: x.get(ordenar_por, ''))
             
             return alunos
             
