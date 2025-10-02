@@ -18,12 +18,20 @@ class AlunosService:
         self.db = self.firebase_config.db
         self.collection = self.db.collection('alunos')
     
-    def criar_aluno(self, dados_aluno: Dict[str, Any]) -> str:
+    def criar_aluno(self, nome: str, telefone: str = "", email: str = "", 
+                   endereco: str = "", vencimento_dia: int = 5, turma: str = "",
+                   plano_id: str = "") -> str:
         """
         Cria um novo aluno no Firestore
         
         Args:
-            dados_aluno: Dicionário com dados do aluno conforme schema
+            nome: Nome completo do aluno
+            telefone: Telefone de contato
+            email: Email de contato
+            endereco: Endereço completo
+            vencimento_dia: Dia do vencimento (1-28)
+            turma: Turma/horário do aluno
+            plano_id: ID do plano vinculado
             
         Returns:
             str: ID do documento criado
@@ -33,16 +41,32 @@ class AlunosService:
         """
         try:
             # Validar dados obrigatórios
-            self._validar_dados_obrigatorios(dados_aluno)
+            if not nome or not nome.strip():
+                raise ValueError("Nome é obrigatório")
             
-            # Preparar dados para criação
-            aluno_data = self._preparar_dados_aluno(dados_aluno)
+            if not (1 <= vencimento_dia <= 28):
+                raise ValueError("Dia de vencimento deve estar entre 1 e 28")
             
-            # Adicionar timestamps
-            aluno_data.update({
+            # Preparar dados do aluno
+            aluno_data = {
+                'nome': nome.strip(),
+                'contato': {
+                    'telefone': telefone.strip() if telefone else "",
+                    'email': email.strip() if email else ""
+                },
+                'endereco': endereco.strip() if endereco else "",
+                'status': 'ativo',
+                'vencimentoDia': vencimento_dia,
+                'ativoDesde': date.today().strftime('%Y-%m-%d'),
+                'turma': turma.strip() if turma else "",
+                'graduacao': 'Sem graduação',
                 'createdAt': SERVER_TIMESTAMP,
                 'updatedAt': SERVER_TIMESTAMP
-            })
+            }
+            
+            # Adicionar plano se especificado
+            if plano_id and plano_id.strip():
+                aluno_data['planoId'] = plano_id.strip()
             
             # Criar documento no Firestore
             doc_ref = self.collection.add(aluno_data)[1]
@@ -144,6 +168,46 @@ class AlunosService:
         except Exception as e:
             st.error(f"❌ Erro ao atualizar aluno: {str(e)}")
             raise e
+    
+    def vincular_plano(self, aluno_id: str, plano_id: str) -> bool:
+        """
+        Vincula um aluno a um plano
+        
+        Args:
+            aluno_id: ID do aluno
+            plano_id: ID do plano
+            
+        Returns:
+            bool: True se vinculação foi bem-sucedida
+        """
+        try:
+            self.collection.document(aluno_id).update({
+                'planoId': plano_id,
+                'updatedAt': SERVER_TIMESTAMP
+            })
+            return True
+        except Exception as e:
+            st.error(f"❌ Erro ao vincular plano: {str(e)}")
+            return False
+    
+    def obter_plano_aluno(self, aluno_id: str) -> Optional[str]:
+        """
+        Obtém o ID do plano do aluno
+        
+        Args:
+            aluno_id: ID do aluno
+            
+        Returns:
+            Optional[str]: ID do plano ou None se não vinculado
+        """
+        try:
+            aluno = self.buscar_aluno(aluno_id)
+            if aluno:
+                return aluno.get('planoId')
+            return None
+        except Exception as e:
+            st.error(f"❌ Erro ao obter plano do aluno: {str(e)}")
+            return None
     
     def inativar_aluno(self, aluno_id: str, data_inativacao: Optional[str] = None) -> bool:
         """

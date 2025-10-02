@@ -71,6 +71,8 @@ def show_pagamentos():
         _mostrar_lista_pagamentos(pagamentos_service, alunos_service)
     elif st.session_state.pagamentos_modo == 'novo':
         _mostrar_formulario_novo_pagamento(pagamentos_service, alunos_service)
+    elif st.session_state.pagamentos_modo == 'editar':
+        _mostrar_formulario_editar_pagamento(pagamentos_service, alunos_service)
     elif st.session_state.pagamentos_modo == 'inadimplentes':
         _mostrar_inadimplentes(pagamentos_service)
     elif st.session_state.pagamentos_modo == 'stats':
@@ -208,6 +210,174 @@ def _mostrar_lista_pagamentos(pagamentos_service: PagamentosService, alunos_serv
         
     except Exception as e:
         st.error(f"❌ Erro ao carregar pagamentos: {str(e)}")
+
+def _mostrar_formulario_editar_pagamento(pagamentos_service: PagamentosService, alunos_service: AlunosService):
+    """Mostra formulário para editar pagamento existente"""
+    
+    if 'pagamento_editando' not in st.session_state:
+        st.error("❌ Nenhum pagamento selecionado para edição")
+        if st.button("🔙 Voltar à Lista"):
+            st.session_state.pagamentos_modo = 'lista'
+            st.rerun()
+        return
+    
+    pagamento_id = st.session_state.pagamento_editando
+    
+    try:
+        # Buscar pagamento atual
+        pagamento = pagamentos_service.buscar_pagamento(pagamento_id)
+        if not pagamento:
+            st.error("❌ Pagamento não encontrado")
+            if st.button("🔙 Voltar à Lista"):
+                st.session_state.pagamentos_modo = 'lista'
+                del st.session_state.pagamento_editando
+                st.rerun()
+            return
+        
+        st.markdown("### ✏️ Editar Pagamento")
+        st.info(f"📝 Editando pagamento: **{pagamento.get('alunoNome', 'N/A')}** - {pagamento.get('ym', 'N/A')}")
+        
+        with st.form("form_editar_pagamento"):
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                # Status do pagamento
+                status_atual = pagamento.get('status', 'ausente')
+                novo_status = st.selectbox(
+                    "📊 Status:",
+                    options=['pago', 'inadimplente', 'ausente'],
+                    index=['pago', 'inadimplente', 'ausente'].index(status_atual),
+                    help="Status atual do pagamento"
+                )
+                
+                # Valor
+                valor_atual = pagamento.get('valor', 0.0)
+                novo_valor = st.number_input(
+                    "💰 Valor (R$):",
+                    min_value=0.0,
+                    value=float(valor_atual),
+                    step=0.01,
+                    format="%.2f"
+                )
+            
+            with col2:
+                # Data de vencimento
+                vencimento_atual = pagamento.get('vencimento', '')
+                try:
+                    data_vencimento_atual = datetime.strptime(vencimento_atual, '%Y-%m-%d').date() if vencimento_atual else date.today()
+                except:
+                    data_vencimento_atual = date.today()
+                
+                nova_data_vencimento = st.date_input(
+                    "📅 Data Vencimento:",
+                    value=data_vencimento_atual
+                )
+                
+                # Data de pagamento (se pago)
+                data_pagamento_atual = pagamento.get('dataPagamento', '')
+                if data_pagamento_atual:
+                    try:
+                        data_pag_inicial = datetime.strptime(data_pagamento_atual, '%Y-%m-%d').date()
+                    except:
+                        data_pag_inicial = None
+                else:
+                    data_pag_inicial = None
+                
+                nova_data_pagamento = st.date_input(
+                    "💳 Data Pagamento:",
+                    value=data_pag_inicial,
+                    help="Data em que o pagamento foi realizado (opcional)"
+                )
+            
+            # Observações
+            obs_atual = pagamento.get('obs', '')
+            novas_obs = st.text_area(
+                "📝 Observações:",
+                value=obs_atual,
+                placeholder="Observações sobre o pagamento..."
+            )
+            
+            # Botões
+            col1, col2, col3 = st.columns(3)
+            
+            with col1:
+                if st.form_submit_button("💾 Salvar Alterações", type="primary", use_container_width=True):
+                    try:
+                        # Preparar dados de atualização
+                        dados_atualizacao = {
+                            'status': novo_status,
+                            'valor': novo_valor,
+                            'vencimento': nova_data_vencimento.strftime('%Y-%m-%d')
+                        }
+                        
+                        # Adicionar data de pagamento se fornecida
+                        if nova_data_pagamento:
+                            dados_atualizacao['dataPagamento'] = nova_data_pagamento.strftime('%Y-%m-%d')
+                        
+                        # Adicionar observações se fornecidas
+                        if novas_obs.strip():
+                            dados_atualizacao['obs'] = novas_obs.strip()
+                        
+                        # Atualizar pagamento
+                        sucesso = pagamentos_service.atualizar_pagamento(pagamento_id, dados_atualizacao)
+                        
+                        if sucesso:
+                            st.success("✅ Pagamento atualizado com sucesso!")
+                            # Voltar para lista após 2 segundos
+                            st.session_state.pagamentos_modo = 'lista'
+                            del st.session_state.pagamento_editando
+                            st.rerun()
+                        else:
+                            st.error("❌ Erro ao atualizar pagamento")
+                    
+                    except Exception as e:
+                        st.error(f"❌ Erro ao salvar: {str(e)}")
+            
+            with col2:
+                if st.form_submit_button("🔙 Cancelar", use_container_width=True):
+                    st.session_state.pagamentos_modo = 'lista'
+                    del st.session_state.pagamento_editando
+                    st.rerun()
+            
+            with col3:
+                if st.form_submit_button("🗑️ Excluir", use_container_width=True):
+                    # Confirmar exclusão em modal (simplificado)
+                    st.session_state.confirmar_exclusao = pagamento_id
+                    st.rerun()
+        
+        # Modal de confirmação de exclusão
+        if st.session_state.get('confirmar_exclusao') == pagamento_id:
+            st.error("⚠️ **Confirmar Exclusão**")
+            st.warning(f"Tem certeza que deseja excluir o pagamento de **{pagamento.get('alunoNome', 'N/A')}**?")
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button("✅ Sim, Excluir", type="primary", use_container_width=True):
+                    try:
+                        sucesso = pagamentos_service.deletar_pagamento(pagamento_id)
+                        if sucesso:
+                            st.success("✅ Pagamento excluído com sucesso!")
+                            st.session_state.pagamentos_modo = 'lista'
+                            del st.session_state.pagamento_editando
+                            del st.session_state.confirmar_exclusao
+                            st.rerun()
+                        else:
+                            st.error("❌ Erro ao excluir pagamento")
+                    except Exception as e:
+                        st.error(f"❌ Erro ao excluir: {str(e)}")
+            
+            with col2:
+                if st.button("❌ Cancelar", use_container_width=True):
+                    del st.session_state.confirmar_exclusao
+                    st.rerun()
+    
+    except Exception as e:
+        st.error(f"❌ Erro ao carregar pagamento: {str(e)}")
+        if st.button("🔙 Voltar à Lista"):
+            st.session_state.pagamentos_modo = 'lista'
+            if 'pagamento_editando' in st.session_state:
+                del st.session_state.pagamento_editando
+            st.rerun()
 
 def _mostrar_formulario_novo_pagamento(pagamentos_service: PagamentosService, alunos_service: AlunosService):
     """Mostra formulário para registrar novo pagamento"""

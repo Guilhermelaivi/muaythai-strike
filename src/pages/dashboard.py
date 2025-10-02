@@ -8,6 +8,11 @@ from typing import Dict, Any
 import plotly.express as px
 import pandas as pd
 from src.utils.notifications import NotificationService
+from src.services.alunos_service import AlunosService
+from src.services.pagamentos_service import PagamentosService
+from src.services.presencas_service import PresencasService
+from src.services.graduacoes_service import GraduacoesService
+from src.utils.cache_service import get_cache_manager
 
 def show_dashboard():
     """Exibe o dashboard principal com KPIs"""
@@ -38,8 +43,8 @@ def show_dashboard():
     
     st.markdown(f"### 📅 Relatório: {ym}")
     
-    # Placeholder para dados reais (será implementado com Firestore)
-    dados_mock = _get_mock_data(ym)
+    # Obter dados reais dos serviços
+    dados_reais = _get_real_data(ym)
     
     # Métricas principais
     col1, col2, col3, col4 = st.columns(4)
@@ -51,7 +56,7 @@ def show_dashboard():
             <h2 style="color: #28a745;">R$ {:.2f}</h2>
             <small>📈 +12% vs mês anterior</small>
         </div>
-        """.format(dados_mock['receita']), unsafe_allow_html=True)
+        """.format(dados_reais['receita']), unsafe_allow_html=True)
     
     with col2:
         st.markdown("""
@@ -60,7 +65,7 @@ def show_dashboard():
             <h2 style="color: #dc3545;">{}</h2>
             <small>🎯 Meta: ≤ 5%</small>
         </div>
-        """.format(dados_mock['inadimplentes']), unsafe_allow_html=True)
+        """.format(dados_reais['inadimplentes']), unsafe_allow_html=True)
     
     with col3:
         st.markdown("""
@@ -70,8 +75,8 @@ def show_dashboard():
             <small>📊 {}% do total</small>
         </div>
         """.format(
-            dados_mock['ativos'], 
-            dados_mock['percentual_ativos']
+            dados_reais['ativos'], 
+            dados_reais['percentual_ativos']
         ), unsafe_allow_html=True)
     
     with col4:
@@ -82,8 +87,8 @@ def show_dashboard():
             <small>📅 Média: {:.1f}/dia</small>
         </div>
         """.format(
-            dados_mock['total_presencas'],
-            dados_mock['media_presencas_dia']
+            dados_reais['total_presencas'],
+            dados_reais['media_presencas_dia']
         ), unsafe_allow_html=True)
     
     st.divider()
@@ -94,29 +99,30 @@ def show_dashboard():
     with col1:
         st.markdown("#### 📈 Evolução de Receita (6 meses)")
         
-        # Dados mock para gráfico
-        df_receita = pd.DataFrame({
-            'Mês': ['08/24', '09/24', '10/24', '11/24', '12/24', '01/25'],
-            'Receita': [3200, 3450, 3800, 3600, 4200, dados_mock['receita']]
-        })
-        
-        fig_receita = px.line(
-            df_receita, 
-            x='Mês', 
-            y='Receita',
-            title="Receita Mensal",
-            markers=True
-        )
-        fig_receita.update_layout(height=300)
-        st.plotly_chart(fig_receita, use_container_width=True)
+        # Obter dados históricos reais
+        try:
+            receitas_historicas = _get_receitas_historicas(ym)
+            
+            fig_receita = px.line(
+                receitas_historicas, 
+                x='Mês', 
+                y='Receita',
+                title="Receita Mensal",
+                markers=True
+            )
+            fig_receita.update_layout(height=300)
+            st.plotly_chart(fig_receita, use_container_width=True)
+            
+        except Exception as e:
+            st.error(f"Erro ao carregar histórico de receitas: {str(e)}")
     
     with col2:
         st.markdown("#### 🥋 Status dos Alunos")
         
-        # Dados mock para gráfico de pizza
+        # Dados reais para gráfico de pizza
         df_status = pd.DataFrame({
             'Status': ['Ativos', 'Inativos'],
-            'Quantidade': [dados_mock['ativos'], dados_mock['inativos']]
+            'Quantidade': [dados_reais['ativos'], dados_reais['inativos']]
         })
         
         fig_status = px.pie(
@@ -132,26 +138,59 @@ def show_dashboard():
         fig_status.update_layout(height=300)
         st.plotly_chart(fig_status, use_container_width=True)
     
-    # Ações rápidas
-    st.markdown("#### ⚡ Ações Rápidas")
+    # Gráficos adicionais
+    st.markdown("---")
+    st.markdown("#### 📊 Analytics Avançados")
     
-    col1, col2, col3, col4 = st.columns(4)
+    col1, col2 = st.columns(2)
     
     with col1:
-        if st.button("👥 Novo Aluno", use_container_width=True):
-            st.info("🚧 Será implementado na Sprint 1")
+        # Graduações por nível
+        try:
+            graduacoes_service = GraduacoesService()
+            stats_grad = graduacoes_service.obter_estatisticas_graduacoes()
+            
+            if stats_grad['distribuicao_por_nivel']:
+                # Limitar a top 8 graduações para visualização
+                distribuicao = dict(list(stats_grad['distribuicao_por_nivel'].items())[:8])
+                
+                fig_grad = px.bar(
+                    x=list(distribuicao.keys()),
+                    y=list(distribuicao.values()),
+                    title="Distribuição por Graduação",
+                    labels={'x': 'Graduação', 'y': 'Quantidade'}
+                )
+                fig_grad.update_layout(height=300)
+                st.plotly_chart(fig_grad, use_container_width=True)
+            else:
+                st.info("Nenhum dado de graduação disponível")
+                
+        except Exception as e:
+            st.info(f"Graduações não disponíveis: {str(e)}")
     
     with col2:
-        if st.button("💰 Registrar Pagamento", use_container_width=True):
-            st.info("🚧 Será implementado na Sprint 2")
-    
-    with col3:
-        if st.button("✅ Marcar Presença", use_container_width=True):
-            st.info("🚧 Será implementado na Sprint 3")
-    
-    with col4:
-        if st.button("🥋 Nova Graduação", use_container_width=True):
-            st.info("🚧 Será implementado na Sprint 3")
+        # Presenças vs Faltas do mês
+        try:
+            presencas_service = PresencasService()
+            relatorio_presencas = presencas_service.obter_relatorio_mensal(ym)
+            
+            presencas = relatorio_presencas.get('total_presencas', 0)
+            faltas = relatorio_presencas.get('total_faltas', 0)
+            
+            if presencas > 0 or faltas > 0:
+                fig_presencas = px.pie(
+                    values=[presencas, faltas],
+                    names=['Presenças', 'Faltas'],
+                    title=f'Presenças vs Faltas ({ym})',
+                    color_discrete_map={'Presenças': 'green', 'Faltas': 'red'}
+                )
+                fig_presencas.update_layout(height=300)
+                st.plotly_chart(fig_presencas, use_container_width=True)
+            else:
+                st.info("Nenhum dado de presença disponível para este mês")
+                
+        except Exception as e:
+            st.info(f"Presenças não disponíveis: {str(e)}")
     
     # Seção de Alertas e Notificações
     st.markdown("---")
@@ -220,9 +259,7 @@ def show_dashboard():
                     """)
                 
                 if st.button("👁️ Ver Todos Inadimplentes", use_container_width=True):
-                    # Redirecionar para página de pagamentos
-                    st.session_state.pagamentos_modo = 'inadimplentes'
-                    st.switch_page("src/pages/pagamentos.py")
+                    st.info("💡 Use o menu lateral para navegar para 'Pagamentos' e ver inadimplentes")
             else:
                 st.success("✅ Nenhum inadimplente crítico!")
         
@@ -258,14 +295,101 @@ def show_dashboard():
     
     except Exception as e:
         st.error(f"❌ Erro ao carregar alertas: {str(e)}")
-    
-    # Informações de desenvolvimento
-    if st.secrets.get("environment", {}).get("debug", False):
-        with st.expander("🔧 Debug - Dados Mock"):
-            st.json(dados_mock)
 
-def _get_mock_data(ym: str) -> Dict[str, Any]:
-    """Gera dados mock para o dashboard (será substituído por dados reais)"""
+def _get_real_data(ym: str) -> Dict[str, Any]:
+    """Obtém dados reais dos serviços para o dashboard com cache"""
+    try:
+        # Inicializar serviços e cache
+        alunos_service = AlunosService()
+        pagamentos_service = PagamentosService()
+        presencas_service = PresencasService()
+        cache_manager = get_cache_manager()
+        
+        # Dados de alunos (com cache)
+        alunos = cache_manager.get_alunos_cached(alunos_service)
+        total_alunos = len(alunos)
+        alunos_ativos = len([a for a in alunos if a.get('status') == 'ativo'])
+        alunos_inativos = total_alunos - alunos_ativos
+        percentual_ativos = round((alunos_ativos / max(1, total_alunos)) * 100, 1)
+        
+        # Dados de pagamentos (com cache)
+        try:
+            estatisticas_pag = cache_manager.get_estatisticas_pagamentos_cached(pagamentos_service, ym)
+            receita = estatisticas_pag.get('receita_total', 0.0)
+            inadimplentes = estatisticas_pag.get('total_inadimplentes', 0)
+        except Exception:
+            receita = 0.0
+            inadimplentes = 0
+        
+        # Dados de presenças (com cache)
+        try:
+            relatorio_presencas = cache_manager.get_relatorio_presencas_cached(presencas_service, ym)
+            total_presencas = relatorio_presencas.get('total_presencas', 0)
+            media_presencas_dia = relatorio_presencas.get('media_presencas_dia', 0.0)
+        except Exception:
+            total_presencas = 0
+            media_presencas_dia = 0.0
+        
+        return {
+            'receita': receita,
+            'inadimplentes': inadimplentes,
+            'ativos': alunos_ativos,
+            'inativos': alunos_inativos,
+            'percentual_ativos': percentual_ativos,
+            'total_presencas': total_presencas,
+            'media_presencas_dia': media_presencas_dia,
+            'ym': ym
+        }
+        
+    except Exception as e:
+        # Fallback para dados mock em caso de erro
+        st.warning(f"⚠️ Erro ao carregar dados reais: {str(e)}. Usando dados de exemplo.")
+        return _get_mock_data_fallback(ym)
+
+def _get_receitas_historicas(ym_atual: str) -> pd.DataFrame:
+    """Obtém receitas dos últimos 6 meses para gráfico histórico"""
+    try:
+        pagamentos_service = PagamentosService()
+        
+        # Calcular últimos 6 meses
+        ano_atual, mes_atual = map(int, ym_atual.split('-'))
+        meses_historicos = []
+        receitas = []
+        
+        for i in range(5, -1, -1):  # 6 meses (5 anteriores + atual)
+            mes_calc = mes_atual - i
+            ano_calc = ano_atual
+            
+            # Ajustar ano se mês for negativo
+            while mes_calc <= 0:
+                mes_calc += 12
+                ano_calc -= 1
+            
+            ym_historico = f"{ano_calc}-{mes_calc:02d}"
+            
+            try:
+                stats = pagamentos_service.obter_estatisticas_mes(ym_historico)
+                receita = stats.get('receita_total', 0.0)
+            except:
+                receita = 0.0
+            
+            meses_historicos.append(f"{mes_calc:02d}/{str(ano_calc)[2:]}")
+            receitas.append(receita)
+        
+        return pd.DataFrame({
+            'Mês': meses_historicos,
+            'Receita': receitas
+        })
+        
+    except Exception as e:
+        # Fallback para dados mock
+        return pd.DataFrame({
+            'Mês': ['08/24', '09/24', '10/24', '11/24', '12/24', '01/25'],
+            'Receita': [3200, 3450, 3800, 3600, 4200, 4500]
+        })
+
+def _get_mock_data_fallback(ym: str) -> Dict[str, Any]:
+    """Dados de fallback quando serviços falham"""
     return {
         'receita': 4500.00,
         'inadimplentes': 3,

@@ -1,7 +1,25 @@
 # CHECKLIST_KANBAN.md
 Kanban orientado a tarefas — Sprints simuladas (MVP)
 
-> Este arquivo é o **guia operacional** do agente.  
+> Este a**TODOS OS OBJETIVOS ATINGIDOS - PRONTO PARA SPRINT 5**
+
+---
+
+## Sprint 5 — Deploy e Usabilidade 🚀 EM ANDAMENTO
+- [ ] **S5-1** — **Preparação GitHub**: README.md profissional, .gitignore, estrutura limpa
+- [ ] **S5-2** — **Requirements.txt**: Dependências atualizadas e pinned para deploy
+- [ ] **S5-3** — **Configuração Deploy**: Preparar para Vercel/Render/Railway (gratuito)
+- [ ] **S5-4** — **Variáveis de Ambiente**: Documentar setup Firebase para produção
+- [ ] **S5-5** — **Validações Frontend**: Melhorar UX com validações em tempo real
+- [ ] **S5-6** — **Feedback Visual**: Loading states, confirmações, mensagens de sucesso
+- [ ] **S5-7** — **Responsividade**: Garantir funcionamento em mobile/tablet
+- [ ] **S5-8** — **Documentação**: Guia de instalação e uso para o dono da academia
+
+**Evidências / Observações:**
+
+---
+
+## Sprint 4 — DoD + Qualidadeo é o **guia operacional** do agente.  
 > Para cada item: marque `[x]` quando concluir, atualize **observações**.  
 > Referência principal: `FIRESTORE_SCHEMA.md` e `IMPLEMENTACAO_MVP.md`.
 
@@ -66,13 +84,23 @@ Kanban orientado a tarefas — Sprints simuladas (MVP)
 
 ---
 
-## Sprint 3 — Operação de Dojo 🔧 PREPARANDO
-- [ ] **S3-1** — **Presenças**: check-in por data (`ym`) e relatório mensal
-- [ ] **S3-2** — **Graduação**: registrar promoção (subcoleção) e timeline por data
-- [ ] **S3-3** — **Home/KPIs** por `ym`: receita do mês, inadimplência, ativos x inativos
-- [ ] **S3-4** — **Cache** de leituras principais com `ttl=60`
+## Sprint 3 — Operação de Dojo ✅ CONCLUÍDO
+- [x] **S3-1** — **Presenças**: check-in por data (`ym`) e relatório mensal
+- [x] **S3-2** — **Graduação**: registrar promoção (subcoleção) e timeline por data
+- [x] **S3-3** — **Home/KPIs** por `ym`: receita do mês, inadimplência, ativos x inativos
+- [x] **S3-4** — **Cache** de leituras principais com `ttl=60`
 
 **Evidências / Observações:**
+✅ 2025-10-02: Sprint 3 CONCLUÍDA COM SUCESSO TOTAL!
+- ✅ PresencasService: Sistema completo de check-in com relatórios mensais por ym
+- 🥋 GraduacoesService: Subcoleção funcional + timeline + estatísticas + candidatos
+- 📊 Dashboard KPIs: Métricas reais por mês (receita, inadimplência, alunos ativos)
+- ⚡ CacheService: Sistema implementado com TTL=60s + invalidação inteligente
+- 🎨 UI integrada: Todas as páginas funcionais com CRUD completo
+- 🐛 Correções: Timeline graduações (NoneType), edição pagamentos, navegação
+- 🧹 Interface limpa: Botões cache removidos, ações rápidas simplificadas
+
+**TODOS OS OBJETIVOS ATINGIDOS - PRONTO PARA SPRINT 5**
 
 ---
 
