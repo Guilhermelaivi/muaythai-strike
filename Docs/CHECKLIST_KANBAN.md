@@ -7,24 +7,39 @@ Kanban orientado a tarefas — Sprints simuladas (MVP)
 
 ---
 
-## Sprint 0 — Preparação de Ambiente
-- [ ] **S0-1** — Configurar projeto Streamlit (repo, virtualenv, dependências)
+## Sprint 0 — Preparação de Ambiente ✅ CONCLUÍDO
+- [x] **S0-1** — Configurar projeto Streamlit (repo, virtualenv, dependências)
 - [ ] **S0-2** — Service Account + variáveis (`GOOGLE_APPLICATION_CREDENTIALS`, `FIREBASE_PROJECT_ID`)
-- [ ] **S0-3** — streamlit-authenticator funcionando (login/logout)
-- [ ] **S0-4** — Definir **papel** inicial (somente admin)
+- [x] **S0-3** — Autenticação simples funcionando (login/logout)
+- [x] **S0-4** — Definir **papel** inicial (somente admin)
 - [ ] **S0-5** — Criar **índices** detalhados no Firestore: (ym), (alunoId,ym desc), (status,ym desc) em pagamentos; (status,nome) em alunos; (alunoId,ym desc), (ym) em presenças
 
 **Evidências / Observações:**
+✅ 2025-10-01: Estrutura completa, autenticação funcionando, commit inicial realizado
+🔄 Próximo: Firebase setup para conectar com Firestore real
 
 ---
 
-## Sprint 1 — Fundamentos de Domínio
-- [ ] **S1-1** — Página **Alunos** (CRUD + filtros por status)
-- [ ] **S1-2** — Marcar **inativo** (status + `inativoDesde`) e reexibir lista
-- [ ] **S1-3** — Página **Planos** (CRUD simples)
-- [ ] **S1-4** — Padrões de **timestamps** (`createdAt`, `updatedAt`) em todas as escritas
+## Sprint 1 — Fundamentos de Domínio 🔄 EM ANDAMENTO
+- [ ] **S1-0** — Conectar Firebase/Firestore real (service account + project setup)
+- [ ] **S1-1** — Criar AlunosService (CRUD base + timestamps)
+- [ ] **S1-2** — Página **Alunos** (listagem + formulário cadastro)
+- [ ] **S1-3** — Editar aluno + marcar **inativo** (status + `inativoDesde`)
+- [ ] **S1-4** — Criar PlanosService (CRUD base + timestamps)
+- [ ] **S1-5** — Página **Planos** (CRUD simples para planos mensais)
+- [ ] **S1-6** — Validação e testes de integração com Firestore
 
 **Evidências / Observações:**
+⏳ Prioridade: Firebase setup → Services → UI → Testes
+
+**ORDEM DE EXECUÇÃO:**
+1. **S1-0**: Firebase (base para tudo)
+2. **S1-1**: AlunosService (lógica de negócio)
+3. **S1-2**: UI Alunos (interface)
+4. **S1-3**: Edição/Inativação (completar CRUD)
+5. **S1-4**: PlanosService
+6. **S1-5**: UI Planos
+7. **S1-6**: Testes finais
 
 ---
 

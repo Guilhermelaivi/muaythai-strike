@@ -50,11 +50,7 @@ class AuthManager:
                     username = st.text_input("👤 Usuário", placeholder="Digite seu usuário")
                     password = st.text_input("🔑 Senha", type="password", placeholder="Digite sua senha")
                     
-                    # Informação para o usuário
-                    if not username or not password:
-                        st.info("ℹ️ Preencha ambos os campos para ativar o botão")
-                    
-                    # Botão sempre disponível, mas com validação na submissão
+                    # Botão sempre disponível
                     submit = st.form_submit_button(
                         "🚪 Entrar", 
                         use_container_width=True, 
