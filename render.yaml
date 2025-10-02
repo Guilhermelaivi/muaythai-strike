@@ -1,0 +1,17 @@
+# ===================================
+# Render.com Deploy Configuration
+# ===================================
+
+# Build Command
+pip install -r requirements.txt
+
+# Start Command  
+streamlit run app.py --server.port=$PORT --server.address=0.0.0.0 --server.headless=true
+
+# Environment Variables Required:
+# - FIREBASE_PROJECT_ID
+# - GOOGLE_APPLICATION_CREDENTIALS (JSON content)
+# - PORT (automatically set by Render)
+
+# Health Check Endpoint
+# Streamlit runs on /healthz by default
