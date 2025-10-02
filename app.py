@@ -65,18 +65,16 @@ def main():
         auth_manager.show_login()
         return
     
-    # Inicializar Firebase - TEMPORARIAMENTE DESABILITADO PARA TESTE
-    # try:
-    #     firebase_config = FirebaseConfig()
-    #     if not firebase_config.is_connected():
-    #         st.error("❌ Erro na conexão com Firebase. Verifique as configurações.")
-    #         return
-    # except Exception as e:
-    #     st.error(f"❌ Erro ao conectar com Firebase: {str(e)}")
-    #     return
-    
-    # Firebase será configurado depois
-    st.sidebar.success("🔥 Firebase: Configurar depois")
+    # Inicializar Firebase
+    try:
+        firebase_config = FirebaseConfig()
+        if not firebase_config.is_connected():
+            st.error("❌ Erro na conexão com Firebase. Verifique as configurações.")
+            return
+    except Exception as e:
+        st.error(f"❌ Erro ao conectar com Firebase: {str(e)}")
+        st.error("Verifique as variáveis de ambiente FIREBASE_PROJECT_ID e GOOGLE_APPLICATION_CREDENTIALS")
+        return
     
     # Sidebar com navegação
     with st.sidebar:

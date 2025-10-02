@@ -35,28 +35,55 @@ class FirebaseConfig:
             raise e
     
     def _setup_credentials(self) -> None:
-        """Configura as credenciais do Firebase"""
+        """Configura as credenciais do Firebase - híbrido: secrets.toml ou env vars"""
+        import json
+        
         try:
-            # Tentar carregar de secrets primeiro
+            # Tentar carregar de secrets primeiro (desenvolvimento)
             if "firebase" in st.secrets:
-                # Usando service account key do secrets
                 if "credentials_path" in st.secrets["firebase"]:
                     cred_path = st.secrets["firebase"]["credentials_path"]
                     if os.path.exists(cred_path):
                         self.cred = credentials.Certificate(cred_path)
-                    else:
-                        raise FileNotFoundError(f"Arquivo de credenciais não encontrado: {cred_path}")
+                        return
                 else:
-                    # Usando credenciais diretamente do secrets (para Streamlit Cloud)
+                    # Usando credenciais diretamente do secrets
                     firebase_secrets = dict(st.secrets["firebase"])
                     self.cred = credentials.Certificate(firebase_secrets)
-            else:
-                # Fallback para variável de ambiente
-                cred_path = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
-                if cred_path and os.path.exists(cred_path):
-                    self.cred = credentials.Certificate(cred_path)
+                    return
+                    
+        except (KeyError, FileNotFoundError):
+            pass
+        
+        # Fallback para variáveis de ambiente (produção)
+        try:
+            # Método 1: GOOGLE_APPLICATION_CREDENTIALS como JSON string
+            google_creds = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+            if google_creds:
+                # Se é um caminho de arquivo
+                if os.path.exists(google_creds):
+                    self.cred = credentials.Certificate(google_creds)
                 else:
-                    raise ValueError("Credenciais do Firebase não configuradas")
+                    # Se é o JSON como string (Render)
+                    cred_dict = json.loads(google_creds)
+                    self.cred = credentials.Certificate(cred_dict)
+                return
+            
+            # Método 2: Usando project_id separadamente
+            project_id = os.getenv("FIREBASE_PROJECT_ID")
+            if project_id and google_creds:
+                cred_dict = json.loads(google_creds)
+                # Garantir que project_id está correto
+                cred_dict["project_id"] = project_id
+                self.cred = credentials.Certificate(cred_dict)
+                return
+                
+            raise ValueError("Credenciais do Firebase não encontradas nas variáveis de ambiente")
+            
+        except json.JSONDecodeError as e:
+            raise ValueError(f"Erro ao decodificar credenciais JSON: {e}")
+        except Exception as e:
+            raise ValueError(f"Erro ao configurar credenciais Firebase: {e}")
         
         except Exception as e:
             st.error(f"❌ Erro ao configurar credenciais: {str(e)}")
