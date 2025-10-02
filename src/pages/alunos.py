@@ -198,6 +198,26 @@ def _mostrar_formulario_novo_aluno(alunos_service: AlunosService):
     
     st.markdown("### ➕ Cadastrar Novo Aluno")
     
+    # Mostrar sucesso se aluno foi cadastrado
+    if 'aluno_cadastrado' in st.session_state:
+        aluno_info = st.session_state.aluno_cadastrado
+        st.success(f"✅ Aluno **{aluno_info['nome']}** cadastrado com sucesso!")
+        st.info(f"🆔 ID: {aluno_info['id']}")
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("📋 Ver na Lista", type="primary", use_container_width=True):
+                del st.session_state.aluno_cadastrado
+                st.session_state.alunos_modo = 'lista'
+                st.rerun()
+        
+        with col2:
+            if st.button("➕ Cadastrar Outro", type="secondary", use_container_width=True):
+                del st.session_state.aluno_cadastrado
+                st.rerun()
+        
+        st.markdown("---")
+    
     with st.form("form_novo_aluno", clear_on_submit=True):
         # Dados básicos
         st.markdown("#### 📝 Dados Básicos")
@@ -277,13 +297,11 @@ def _mostrar_formulario_novo_aluno(alunos_service: AlunosService):
             # Cadastrar aluno
             try:
                 aluno_id = alunos_service.criar_aluno(dados_aluno)
-                st.success(f"✅ Aluno **{nome}** cadastrado com sucesso!")
-                st.info(f"🆔 ID: {aluno_id}")
-                
-                # Opção de voltar para lista
-                if st.button("📋 Ver na Lista", type="secondary"):
-                    st.session_state.alunos_modo = 'lista'
-                    st.rerun()
+                st.session_state.aluno_cadastrado = {
+                    'nome': nome,
+                    'id': aluno_id
+                }
+                st.rerun()
                     
             except Exception as e:
                 st.error(f"❌ Erro ao cadastrar aluno: {str(e)}")

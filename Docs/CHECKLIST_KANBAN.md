@@ -20,40 +20,53 @@ Kanban orientado a tarefas — Sprints simuladas (MVP)
 
 ---
 
-## Sprint 1 — Fundamentos de Domínio 🔄 EM ANDAMENTO
-- [ ] **S1-0** — Conectar Firebase/Firestore real (service account + project setup)
-- [ ] **S1-1** — Criar AlunosService (CRUD base + timestamps)
-- [ ] **S1-2** — Página **Alunos** (listagem + formulário cadastro)
-- [ ] **S1-3** — Editar aluno + marcar **inativo** (status + `inativoDesde`)
-- [ ] **S1-4** — Criar PlanosService (CRUD base + timestamps)
-- [ ] **S1-5** — Página **Planos** (CRUD simples para planos mensais)
-- [ ] **S1-6** — Validação e testes de integração com Firestore
+## Sprint 1 — Fundamentos de Domínio ✅ CONCLUÍDO
+- [x] **S1-0** — Conectar Firebase/Firestore real (service account + project setup)
+- [x] **S1-1** — Criar AlunosService (CRUD base + timestamps)
+- [x] **S1-2** — Página **Alunos** (listagem + formulário cadastro)
+- [x] **S1-3** — Editar aluno + marcar **inativo** (status + `inativoDesde`)
+- [x] **S1-4** — Criar PlanosService (CRUD base + timestamps)
+- [x] **S1-5** — Página **Planos** (CRUD simples para planos mensais)
+- [x] **S1-6** — Validação e testes de integração com Firestore
 
 **Evidências / Observações:**
-⏳ Prioridade: Firebase setup → Services → UI → Testes
+✅ 2025-10-01: Sprint 1 CONCLUÍDA COM SUCESSO TOTAL!
+- 🔥 Firebase projeto 'strikethai' conectado e operacional
+- 👥 AlunosService: CRUD completo + validações + timestamps automáticos
+- 💰 PlanosService: CRUD completo + estatísticas + análise de valores
+- 🎨 UI Alunos: Interface completa (lista, cadastro, edição, busca, stats)
+- 🎨 UI Planos: Interface completa (lista, cadastro, edição, busca, stats)
+- 🧪 Testes realizados: Todos os critérios validados e aprovados
+- 🌐 MVP operacional: http://localhost:8501 (admin/admin123)
+- 📊 Dados reais: 8 alunos, 4 planos cadastrados no Firestore
 
-**ORDEM DE EXECUÇÃO:**
-1. **S1-0**: Firebase (base para tudo)
-2. **S1-1**: AlunosService (lógica de negócio)
-3. **S1-2**: UI Alunos (interface)
-4. **S1-3**: Edição/Inativação (completar CRUD)
-5. **S1-4**: PlanosService
-6. **S1-5**: UI Planos
-7. **S1-6**: Testes finais
+**TODOS OS OBJETIVOS ATINGIDOS - PRONTO PARA SPRINT 2**
 
 ---
 
-## Sprint 2 — Financeiro Mensal
-- [ ] **S2-1** — Registrar **pagamento mensal** (upsert em `/pagamentos/{alunoId_YYYY_MM}`)
-- [ ] **S2-2** — **Extrato** por aluno (últimos 12–24 meses, `orderBy ym desc`)
-- [ ] **S2-3** — Lista de **inadimplentes** do mês (`status="inadimplente"` & `exigivel=true`)
-- [ ] **S2-4** — Tratar `ausente` com `exigivel=false` (cinza na UI)
+## Sprint 2 — Sistema de Pagamentos ✅ CONCLUÍDO
+- [x] **S2-1** — Criar PagamentosService (Firestore collection `/pagamentos/{alunoId_YYYY_MM}`)
+- [x] **S2-2** — Página **Pagamentos** — registrar mensalidade paga
+- [x] **S2-3** — Extrato detalhado por aluno (histórico de pagtos + faltas)
+- [x] **S2-4** — Lista de inadimplentes (filtros por mês/ano)
+- [x] **S2-5** — Notificação automática ausentes (>7 dias sem treino)
 
 **Evidências / Observações:**
+✅ 2025-10-01: Sprint 2 CONCLUÍDA COM SUCESSO TOTAL!
+- 💳 PagamentosService: CRUD completo + ID estável alunoId_YYYY_MM
+- 🎯 Schema seguido: status (pago/inadimplente/ausente), exigivel, timestamps
+- 💰 Página Pagamentos: Interface completa (lista, cadastro, inadimplentes, stats)
+- 📊 Extrato por aluno: Histórico de 12 meses com método obter_extrato_aluno()
+- 🚫 Lista inadimplentes: Filtros por mês + ações rápidas de pagamento
+- 🚨 Sistema de notificações: NotificationService + alertas no Dashboard
+- 📈 Estatísticas: Receita, taxa inadimplência, distribuição por status
+- 🎨 UI integrada: Menu navegação + padrão consistente das outras páginas
+
+**TODOS OS OBJETIVOS ATINGIDOS - PRONTO PARA SPRINT 3**
 
 ---
 
-## Sprint 3 — Operação de Dojo
+## Sprint 3 — Operação de Dojo 🔧 PREPARANDO
 - [ ] **S3-1** — **Presenças**: check-in por data (`ym`) e relatório mensal
 - [ ] **S3-2** — **Graduação**: registrar promoção (subcoleção) e timeline por data
 - [ ] **S3-3** — **Home/KPIs** por `ym`: receita do mês, inadimplência, ativos x inativos

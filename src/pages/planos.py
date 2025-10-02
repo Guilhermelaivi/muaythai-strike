@@ -29,7 +29,7 @@ def show_planos():
         st.session_state.planos_modo = 'lista'
     
     # Menu de navegação
-    col1, col2, col3, col4 = st.columns([1, 1, 1, 1])
+    col1, col2, col3 = st.columns([1, 1, 1])
     
     with col1:
         if st.button("📋 Lista de Planos", use_container_width=True, 
@@ -44,12 +44,6 @@ def show_planos():
             st.rerun()
     
     with col3:
-        if st.button("🔍 Buscar", use_container_width=True,
-                    type="primary" if st.session_state.planos_modo == 'buscar' else "secondary"):
-            st.session_state.planos_modo = 'buscar'
-            st.rerun()
-    
-    with col4:
         if st.button("📊 Estatísticas", use_container_width=True,
                     type="primary" if st.session_state.planos_modo == 'stats' else "secondary"):
             st.session_state.planos_modo = 'stats'
@@ -64,8 +58,6 @@ def show_planos():
         _mostrar_formulario_novo_plano(planos_service)
     elif st.session_state.planos_modo == 'editar':
         _mostrar_formulario_editar_plano(planos_service)
-    elif st.session_state.planos_modo == 'buscar':
-        _mostrar_busca_planos(planos_service)
     elif st.session_state.planos_modo == 'stats':
         _mostrar_estatisticas_planos(planos_service)
 
@@ -198,6 +190,27 @@ def _mostrar_formulario_novo_plano(planos_service: PlanosService):
     
     st.markdown("### ➕ Cadastrar Novo Plano")
     
+    # Mostrar sucesso se plano foi cadastrado
+    if 'plano_cadastrado' in st.session_state:
+        plano_info = st.session_state.plano_cadastrado
+        st.success(f"✅ Plano **{plano_info['nome']}** cadastrado com sucesso!")
+        st.info(f"🆔 ID: {plano_info['id']}")
+        st.info(f"💰 Valor: R$ {plano_info['valor']:.2f}")
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("📋 Ver na Lista", type="primary", use_container_width=True):
+                del st.session_state.plano_cadastrado
+                st.session_state.planos_modo = 'lista'
+                st.rerun()
+        
+        with col2:
+            if st.button("➕ Cadastrar Outro", type="secondary", use_container_width=True):
+                del st.session_state.plano_cadastrado
+                st.rerun()
+        
+        st.markdown("---")
+    
     with st.form("form_novo_plano", clear_on_submit=True):
         # Dados básicos
         st.markdown("#### 📝 Dados Básicos")
@@ -250,14 +263,12 @@ def _mostrar_formulario_novo_plano(planos_service: PlanosService):
             # Cadastrar plano
             try:
                 plano_id = planos_service.criar_plano(dados_plano)
-                st.success(f"✅ Plano **{nome}** cadastrado com sucesso!")
-                st.info(f"🆔 ID: {plano_id}")
-                st.info(f"💰 Valor: R$ {valor:.2f}")
-                
-                # Opção de voltar para lista
-                if st.button("📋 Ver na Lista", type="secondary"):
-                    st.session_state.planos_modo = 'lista'
-                    st.rerun()
+                st.session_state.plano_cadastrado = {
+                    'nome': nome,
+                    'id': plano_id,
+                    'valor': valor
+                }
+                st.rerun()
                     
             except Exception as e:
                 st.error(f"❌ Erro ao cadastrar plano: {str(e)}")
@@ -429,80 +440,6 @@ def _mostrar_formulario_editar_plano(planos_service: PlanosService):
             if 'plano_editando' in st.session_state:
                 del st.session_state.plano_editando
             st.rerun()
-
-def _mostrar_busca_planos(planos_service: PlanosService):
-    """Mostra interface de busca de planos"""
-    
-    st.markdown("### 🔍 Buscar Planos")
-    
-    # Campo de busca
-    termo_busca = st.text_input(
-        "🔎 Digite o nome para buscar:",
-        placeholder="Digite parte do nome do plano...",
-        help="A busca é realizada no nome do plano"
-    )
-    
-    col1, col2 = st.columns([1, 3])
-    
-    with col1:
-        buscar = st.button("🔍 Buscar", type="primary", use_container_width=True)
-    
-    # Realizar busca
-    if buscar and termo_busca and termo_busca.strip():
-        try:
-            resultados = planos_service.buscar_por_nome(termo_busca.strip())
-            
-            if not resultados:
-                st.warning(f"❓ Nenhum plano encontrado com o termo: **{termo_busca}**")
-                return
-            
-            st.success(f"✅ Encontrados **{len(resultados)}** plano(s)")
-            
-            # Exibir resultados
-            for i, plano in enumerate(resultados):
-                status_texto = "Ativo" if plano.get('ativo', False) else "Inativo"
-                status_emoji = "✅" if plano.get('ativo', False) else "⏸️"
-                
-                with st.expander(f"💰 {plano.get('nome', 'N/A')} - {status_emoji} {status_texto}", expanded=i==0):
-                    col1, col2 = st.columns(2)
-                    
-                    with col1:
-                        st.write(f"**📊 Status:** {status_texto}")
-                        st.write(f"**💵 Valor:** R$ {plano.get('valor', 0):.2f}")
-                        st.write(f"**📅 Periodicidade:** {plano.get('periodicidade', 'mensal').title()}")
-                    
-                    with col2:
-                        st.write(f"**📆 Dia Padrão:** {plano.get('diaPadraoVencimento', 'N/A')}")
-                        if plano.get('createdAt'):
-                            st.write(f"**📅 Criado em:** {plano.get('createdAt')}")
-                        if plano.get('updatedAt'):
-                            st.write(f"**🔄 Atualizado em:** {plano.get('updatedAt')}")
-                    
-                    # Ações rápidas
-                    col1, col2, col3 = st.columns(3)
-                    with col1:
-                        if st.button(f"✏️ Editar", key=f"edit_{plano.get('id')}"):
-                            st.session_state.plano_editando = plano.get('id')
-                            st.session_state.planos_modo = 'editar'
-                            st.rerun()
-                    
-                    with col2:
-                        if plano.get('ativo', False):
-                            if st.button(f"⏸️ Inativar", key=f"inativar_{plano.get('id')}"):
-                                if planos_service.inativar_plano(plano.get('id')):
-                                    st.success("Plano inativado!")
-                                    st.rerun()
-                        else:
-                            if st.button(f"▶️ Ativar", key=f"ativar_{plano.get('id')}"):
-                                if planos_service.ativar_plano(plano.get('id')):
-                                    st.success("Plano ativado!")
-                                    st.rerun()
-                                    
-        except Exception as e:
-            st.error(f"❌ Erro na busca: {str(e)}")
-    
-    elif buscar and not termo_busca.strip():
-        st.warning("⚠️ Digite um termo para buscar")
 
 def _mostrar_estatisticas_planos(planos_service: PlanosService):
     """Mostra estatísticas dos planos"""

@@ -114,3 +114,18 @@ class FirebaseConfig:
         except Exception as e:
             st.error(f"❌ Erro no teste de conexão: {str(e)}")
             return False
+
+# Instância global para reutilização
+_firebase_instance: Optional[FirebaseConfig] = None
+
+def get_firestore_client() -> firestore.Client:
+    """
+    Função utilitária para obter cliente Firestore
+    Reutiliza instância existente ou cria nova
+    """
+    global _firebase_instance
+    
+    if _firebase_instance is None:
+        _firebase_instance = FirebaseConfig()
+    
+    return _firebase_instance.get_db()
