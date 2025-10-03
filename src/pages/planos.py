@@ -381,26 +381,38 @@ def _mostrar_formulario_editar_plano(planos_service: PlanosService):
                     
                     if sucesso:
                         st.success(f"✅ Plano **{nome}** atualizado com sucesso!")
-                        
-                        # Opções pós-edição
-                        col1, col2, col3 = st.columns(3)
-                        
-                        with col1:
-                            if st.button("📋 Voltar para Lista", type="secondary"):
-                                st.session_state.planos_modo = 'lista'
-                                del st.session_state.plano_editando
-                                st.rerun()
-                        
-                        with col2:
-                            if st.button("👁️ Ver Detalhes", type="secondary"):
-                                _mostrar_detalhes_plano(planos_service, plano_id)
-                        
-                        with col3:
-                            if st.button("✏️ Continuar Editando", type="secondary"):
-                                st.rerun()
+                        # Marcar para mostrar opções pós-edição fora do form
+                        st.session_state.plano_atualizado = True
                         
                 except Exception as e:
                     st.error(f"❌ Erro ao atualizar plano: {str(e)}")
+        
+        # Opções pós-edição (FORA do formulário)
+        if st.session_state.get('plano_atualizado', False):
+            st.markdown("---")
+            st.markdown("### 🎉 Opções Pós-Edição")
+            
+            col1, col2, col3 = st.columns(3)
+            
+            with col1:
+                if st.button("📋 Voltar para Lista", type="secondary"):
+                    st.session_state.planos_modo = 'lista'
+                    if 'plano_editando' in st.session_state:
+                        del st.session_state.plano_editando
+                    st.session_state.plano_atualizado = False
+                    st.rerun()
+            
+            with col2:
+                if st.button("👁️ Ver Detalhes", type="secondary"):
+                    st.session_state.plano_detalhes = plano_id
+                    st.session_state.planos_modo = 'detalhes'
+                    st.session_state.plano_atualizado = False
+                    st.rerun()
+            
+            with col3:
+                if st.button("✏️ Continuar Editando", type="secondary"):
+                    st.session_state.plano_atualizado = False
+                    st.rerun()
         
         # Ações rápidas adicionais
         st.markdown("---")

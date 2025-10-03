@@ -18,20 +18,20 @@ class AlunosService:
         self.db = self.firebase_config.db
         self.collection = self.db.collection('alunos')
     
-    def criar_aluno(self, nome: str, telefone: str = "", email: str = "", 
+    def criar_aluno(self, dados_aluno_ou_nome, telefone: str = "", email: str = "", 
                    endereco: str = "", vencimento_dia: int = 5, turma: str = "",
                    plano_id: str = "") -> str:
         """
         Cria um novo aluno no Firestore
         
         Args:
-            nome: Nome completo do aluno
-            telefone: Telefone de contato
-            email: Email de contato
-            endereco: Endereço completo
+            dados_aluno_ou_nome: Dict com dados do aluno OU string com nome
+            telefone: Telefone de contato (se usar método antigo)
+            email: Email de contato (se usar método antigo)
+            endereco: Endereço completo (se usar método antigo)
             vencimento_dia: Dia do vencimento (1-28)
-            turma: Turma/horário do aluno
-            plano_id: ID do plano vinculado
+            turma: Turma/horário do aluno (se usar método antigo)
+            plano_id: ID do plano vinculado (se usar método antigo)
             
         Returns:
             str: ID do documento criado
@@ -40,6 +40,19 @@ class AlunosService:
             Exception: Se houver erro na criação
         """
         try:
+            # Se recebeu um dicionário, extrair os dados
+            if isinstance(dados_aluno_ou_nome, dict):
+                dados = dados_aluno_ou_nome
+                nome = dados.get('nome', '')
+                telefone = dados.get('contato', {}).get('telefone', '') if isinstance(dados.get('contato'), dict) else ''
+                email = dados.get('contato', {}).get('email', '') if isinstance(dados.get('contato'), dict) else ''
+                endereco = dados.get('endereco', '')
+                vencimento_dia = dados.get('vencimentoDia', 5)
+                turma = dados.get('turma', '')
+                plano_id = dados.get('planoId', '')
+            else:
+                # Método antigo - dados_aluno_ou_nome é o nome
+                nome = dados_aluno_ou_nome
             # Validar dados obrigatórios
             if not nome or not nome.strip():
                 raise ValueError("Nome é obrigatório")
