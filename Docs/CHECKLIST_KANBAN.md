@@ -152,6 +152,8 @@ Kanban orientado a tarefas — Sprints simuladas (MVP)
 
 ## Backlog (pós-MVP)
 - [ ] Export CSV/Excel nas listas e relatórios
+- [ ] **Search na lista de pagamentos**: Campo de busca para filtrar pagamentos por nome do aluno na listagem principal
+- [ ] **Histórico por aluno otimizado**: Ao clicar em um aluno, carregar apenas seus pagamentos históricos (não toda a lista) 
 - [ ] Alerts (vencimentos), **/audits** para trilha de alterações
 - [ ] Integração de pagamentos (boleto/cartão) e/ou lembretes automáticos
 - [ ] Migrar auth para **Firebase Auth** (futuro) e implementar perfis múltiplos se necessário

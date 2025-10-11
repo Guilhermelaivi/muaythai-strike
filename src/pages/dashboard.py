@@ -19,44 +19,74 @@ def show_dashboard():
     
     st.markdown("## 📊 Dashboard")
     
+    # Detectar período dos dados reais
+    periodo_disponivel = _get_available_period()
+    
     # Seletor de mês
     col1, col2, col3 = st.columns([2, 2, 6])
     
     with col1:
         current_year = datetime.now().year
+        
+        # Usar período real dos dados ou fallback para ano atual
+        if periodo_disponivel['anos']:
+            anos_disponiveis = sorted(periodo_disponivel['anos'])
+            default_year_index = len(anos_disponiveis) - 1  # Último ano
+            if current_year in anos_disponiveis:
+                default_year_index = anos_disponiveis.index(current_year)
+        else:
+            anos_disponiveis = [current_year]
+            default_year_index = 0
+        
         selected_year = st.selectbox(
             "Ano:", 
-            options=list(range(current_year-2, current_year+2)),
-            index=2  # Ano atual
+            options=anos_disponiveis,
+            index=default_year_index
         )
     
     with col2:
-        selected_month = st.selectbox(
+        # Adicionar opção "Todos" para mostrar dados anuais
+        meses_opcoes = ["Todos"] + list(range(1, 13))
+        meses_labels = ["Todos os meses"] + [f"{x:02d}" for x in range(1, 13)]
+        
+        selected_month_option = st.selectbox(
             "Mês:",
-            options=list(range(1, 13)),
-            index=datetime.now().month - 1,
-            format_func=lambda x: f"{x:02d}"
+            options=meses_opcoes,
+            index=datetime.now().month,  # Mês atual (não mais -1 porque temos "Todos" no início)
+            format_func=lambda x: meses_labels[meses_opcoes.index(x)]
         )
+        
+        # Determinar se é consulta anual ou mensal
+        is_annual_view = selected_month_option == "Todos"
+        selected_month = None if is_annual_view else selected_month_option
     
-    # Gerar ym para consultas
-    ym = f"{selected_year}-{selected_month:02d}"
+    # Gerar ym para consultas ou usar ano para consulta anual
+    if is_annual_view:
+        ym = str(selected_year)  # Apenas o ano para consulta anual
+        periodo_titulo = f"Ano {selected_year}"
+    else:
+        ym = f"{selected_year}-{selected_month:02d}"
+        periodo_titulo = f"{ym}"
     
-    st.markdown(f"### 📅 Relatório: {ym}")
+    st.markdown(f"### 📅 Relatório: {periodo_titulo}")
     
-    # Obter dados reais dos serviços
-    dados_reais = _get_real_data(ym)
+    # Obter dados reais dos serviços (modificado para suportar consulta anual)
+    dados_reais = _get_real_data(ym, is_annual_view)
     
     # Métricas principais
     col1, col2, col3, col4 = st.columns(4)
     
     with col1:
+        periodo_label = "do Ano" if is_annual_view else "do Mês"
+        comparacao_label = "+12% vs ano anterior" if is_annual_view else "+12% vs mês anterior"
+        
         st.markdown("""
         <div class="metric-card">
-            <h3>💰 Receita do Mês</h3>
+            <h3>💰 Receita {}</h3>
             <h2 style="color: #28a745;">R$ {:.2f}</h2>
-            <small>📈 +12% vs mês anterior</small>
+            <small>📈 {}</small>
         </div>
-        """.format(dados_reais['receita']), unsafe_allow_html=True)
+        """.format(periodo_label, dados_reais['receita'], comparacao_label), unsafe_allow_html=True)
     
     with col2:
         st.markdown("""
@@ -80,15 +110,19 @@ def show_dashboard():
         ), unsafe_allow_html=True)
     
     with col4:
+        presencas_label = "Presenças" if is_annual_view else "Presenças"
+        media_label = f"Média: {dados_reais['media_presencas_dia']:.1f}/dia" if not is_annual_view else f"Total no ano: {dados_reais['total_presencas']}"
+        
         st.markdown("""
         <div class="metric-card">
-            <h3>✅ Presenças</h3>
+            <h3>✅ {}</h3>
             <h2 style="color: #17a2b8;">{}</h2>
-            <small>📅 Média: {:.1f}/dia</small>
+            <small>📅 {}</small>
         </div>
         """.format(
+            presencas_label,
             dados_reais['total_presencas'],
-            dados_reais['media_presencas_dia']
+            media_label
         ), unsafe_allow_html=True)
     
     st.divider()
@@ -97,17 +131,25 @@ def show_dashboard():
     col1, col2 = st.columns(2)
     
     with col1:
-        st.markdown("#### 📈 Evolução de Receita (6 meses)")
+        # Ajustar título e eixo baseado na visualização
+        if is_annual_view:
+            st.markdown("#### 📈 Evolução de Receita (3 anos)")
+            titulo_grafico = "Receita Anual"
+            eixo_x = 'Ano'
+        else:
+            st.markdown("#### 📈 Evolução de Receita (6 meses)")
+            titulo_grafico = "Receita Mensal"
+            eixo_x = 'Mês'
         
         # Obter dados históricos reais
         try:
-            receitas_historicas = _get_receitas_historicas(ym)
+            receitas_historicas = _get_receitas_historicas(ym, is_annual_view)
             
             fig_receita = px.line(
                 receitas_historicas, 
-                x='Mês', 
+                x=eixo_x, 
                 y='Receita',
-                title="Receita Mensal",
+                title=titulo_grafico,
                 markers=True
             )
             fig_receita.update_layout(height=300)
@@ -296,7 +338,66 @@ def show_dashboard():
     except Exception as e:
         st.error(f"❌ Erro ao carregar alertas: {str(e)}")
 
-def _get_real_data(ym: str) -> Dict[str, Any]:
+def _get_available_period():
+    """Detecta período disponível nos dados reais de pagamentos"""
+    try:
+        # Inicializar serviço de pagamentos
+        cache_manager = get_cache_manager()
+        
+        # Buscar anos disponíveis nos pagamentos
+        if 'pagamentos_service' not in st.session_state:
+            st.session_state.pagamentos_service = PagamentosService()
+        
+        pagamentos_service = st.session_state.pagamentos_service
+        
+        # Buscar todos os pagamentos para extrair anos
+        try:
+            # Buscar todos os documentos de pagamentos
+            collection_ref = pagamentos_service.db.collection('pagamentos')
+            docs = list(collection_ref.stream())
+            
+            anos_encontrados = set()
+            meses_por_ano = {}
+            
+            for doc in docs:
+                data = doc.to_dict()
+                ano = data.get('ano')
+                mes = data.get('mes')
+                
+                if ano and mes:
+                    anos_encontrados.add(int(ano))
+                    if ano not in meses_por_ano:
+                        meses_por_ano[ano] = set()
+                    meses_por_ano[ano].add(int(mes))
+            
+            # Se não encontrou dados, usar ano atual como fallback
+            if not anos_encontrados:
+                current_year = datetime.now().year
+                anos_encontrados = {current_year}
+                meses_por_ano = {current_year: {datetime.now().month}}
+            
+            return {
+                'anos': list(anos_encontrados),
+                'meses_por_ano': meses_por_ano
+            }
+            
+        except Exception as e:
+            # Fallback se não conseguir acessar dados
+            current_year = datetime.now().year
+            return {
+                'anos': [current_year],
+                'meses_por_ano': {current_year: {datetime.now().month}}
+            }
+    
+    except Exception as e:
+        # Fallback completo
+        current_year = datetime.now().year
+        return {
+            'anos': [current_year],
+            'meses_por_ano': {current_year: {datetime.now().month}}
+        }
+
+def _get_real_data(ym: str, is_annual_view: bool = False) -> Dict[str, Any]:
     """Obtém dados reais dos serviços para o dashboard com cache"""
     try:
         # Inicializar serviços e cache
@@ -312,20 +413,60 @@ def _get_real_data(ym: str) -> Dict[str, Any]:
         alunos_inativos = total_alunos - alunos_ativos
         percentual_ativos = round((alunos_ativos / max(1, total_alunos)) * 100, 1)
         
-        # Dados de pagamentos (com cache)
+        # Dados de pagamentos (com cache) - modificado para suportar consulta anual
         try:
-            estatisticas_pag = cache_manager.get_estatisticas_pagamentos_cached(pagamentos_service, ym)
-            receita = estatisticas_pag.get('receita_total', 0.0)
-            inadimplentes = estatisticas_pag.get('total_inadimplentes', 0)
+            if is_annual_view:
+                # Para visualização anual, calcular receita de todo o ano
+                ano = int(ym)
+                receita_total_ano = 0.0
+                inadimplentes_total = 0
+                
+                # Buscar todos os meses do ano
+                for mes in range(1, 13):
+                    ym_mes = f"{ano}-{mes:02d}"
+                    try:
+                        estat_mes = cache_manager.get_estatisticas_pagamentos_cached(pagamentos_service, ym_mes)
+                        receita_total_ano += estat_mes.get('receita_total', 0.0)
+                        inadimplentes_total += estat_mes.get('total_inadimplentes', 0)
+                    except:
+                        continue
+                
+                receita = receita_total_ano
+                inadimplentes = inadimplentes_total
+            else:
+                # Consulta mensal normal
+                estatisticas_pag = cache_manager.get_estatisticas_pagamentos_cached(pagamentos_service, ym)
+                receita = estatisticas_pag.get('receita_total', 0.0)
+                inadimplentes = estatisticas_pag.get('total_inadimplentes', 0)
         except Exception:
             receita = 0.0
             inadimplentes = 0
         
-        # Dados de presenças (com cache)
+        # Dados de presenças (com cache) - modificado para suportar consulta anual
         try:
-            relatorio_presencas = cache_manager.get_relatorio_presencas_cached(presencas_service, ym)
-            total_presencas = relatorio_presencas.get('total_presencas', 0)
-            media_presencas_dia = relatorio_presencas.get('media_presencas_dia', 0.0)
+            if is_annual_view:
+                # Para visualização anual, somar presenças de todo o ano
+                ano = int(ym)
+                total_presencas_ano = 0
+                total_dias_com_presencas = 0
+                
+                for mes in range(1, 13):
+                    ym_mes = f"{ano}-{mes:02d}"
+                    try:
+                        relatorio_mes = cache_manager.get_relatorio_presencas_cached(presencas_service, ym_mes)
+                        total_presencas_ano += relatorio_mes.get('total_presencas', 0)
+                        if relatorio_mes.get('total_presencas', 0) > 0:
+                            total_dias_com_presencas += 1
+                    except:
+                        continue
+                
+                total_presencas = total_presencas_ano
+                media_presencas_dia = total_presencas_ano / max(1, total_dias_com_presencas * 30)  # Aproximação
+            else:
+                # Consulta mensal normal
+                relatorio_presencas = cache_manager.get_relatorio_presencas_cached(presencas_service, ym)
+                total_presencas = relatorio_presencas.get('total_presencas', 0)
+                media_presencas_dia = relatorio_presencas.get('media_presencas_dia', 0.0)
         except Exception:
             total_presencas = 0
             media_presencas_dia = 0.0
@@ -346,47 +487,81 @@ def _get_real_data(ym: str) -> Dict[str, Any]:
         st.warning(f"⚠️ Erro ao carregar dados reais: {str(e)}. Usando dados de exemplo.")
         return _get_mock_data_fallback(ym)
 
-def _get_receitas_historicas(ym_atual: str) -> pd.DataFrame:
-    """Obtém receitas dos últimos 6 meses para gráfico histórico"""
+def _get_receitas_historicas(ym_atual: str, is_annual_view: bool = False) -> pd.DataFrame:
+    """Obtém receitas dos últimos períodos para gráfico histórico"""
     try:
         pagamentos_service = PagamentosService()
         
-        # Calcular últimos 6 meses
-        ano_atual, mes_atual = map(int, ym_atual.split('-'))
-        meses_historicos = []
-        receitas = []
+        if is_annual_view:
+            # Visualização anual: mostrar últimos anos
+            ano_atual = int(ym_atual)
+            anos_historicos = []
+            receitas = []
+            
+            for i in range(2, -1, -1):  # 3 anos (2 anteriores + atual)
+                ano_calc = ano_atual - i
+                receita_ano = 0.0
+                
+                # Somar receita de todos os meses do ano
+                for mes in range(1, 13):
+                    ym_calc = f"{ano_calc}-{mes:02d}"
+                    try:
+                        stats = pagamentos_service.obter_estatisticas_mes(ym_calc)
+                        receita_ano += stats.get('receita_total', 0.0)
+                    except:
+                        continue
+                
+                anos_historicos.append(str(ano_calc))
+                receitas.append(receita_ano)
+            
+            return pd.DataFrame({
+                'Ano': anos_historicos,
+                'Receita': receitas
+            })
         
-        for i in range(5, -1, -1):  # 6 meses (5 anteriores + atual)
-            mes_calc = mes_atual - i
-            ano_calc = ano_atual
+        else:
+            # Visualização mensal: mostrar últimos meses
+            ano_atual, mes_atual = map(int, ym_atual.split('-'))
+            meses_historicos = []
+            receitas = []
             
-            # Ajustar ano se mês for negativo
-            while mes_calc <= 0:
-                mes_calc += 12
-                ano_calc -= 1
+            for i in range(5, -1, -1):  # 6 meses (5 anteriores + atual)
+                mes_calc = mes_atual - i
+                ano_calc = ano_atual
+                
+                # Ajustar ano se mês for negativo
+                while mes_calc <= 0:
+                    mes_calc += 12
+                    ano_calc -= 1
+                
+                ym_historico = f"{ano_calc}-{mes_calc:02d}"
+                
+                try:
+                    stats = pagamentos_service.obter_estatisticas_mes(ym_historico)
+                    receita = stats.get('receita_total', 0.0)
+                except:
+                    receita = 0.0
+                
+                meses_historicos.append(f"{mes_calc:02d}/{str(ano_calc)[2:]}")
+                receitas.append(receita)
             
-            ym_historico = f"{ano_calc}-{mes_calc:02d}"
-            
-            try:
-                stats = pagamentos_service.obter_estatisticas_mes(ym_historico)
-                receita = stats.get('receita_total', 0.0)
-            except:
-                receita = 0.0
-            
-            meses_historicos.append(f"{mes_calc:02d}/{str(ano_calc)[2:]}")
-            receitas.append(receita)
-        
-        return pd.DataFrame({
-            'Mês': meses_historicos,
-            'Receita': receitas
-        })
+            return pd.DataFrame({
+                'Mês': meses_historicos,
+                'Receita': receitas
+            })
         
     except Exception as e:
         # Fallback para dados mock
-        return pd.DataFrame({
-            'Mês': ['08/24', '09/24', '10/24', '11/24', '12/24', '01/25'],
-            'Receita': [3200, 3450, 3800, 3600, 4200, 4500]
-        })
+        if is_annual_view:
+            return pd.DataFrame({
+                'Ano': ['2023', '2024', '2025'],
+                'Receita': [180000.0, 220000.0, 250000.0]
+            })
+        else:
+            return pd.DataFrame({
+                'Mês': ['08/24', '09/24', '10/24', '11/24', '12/24', '01/25'],
+                'Receita': [18000.0, 22000.0, 19500.0, 20800.0, 21500.0, 23200.0]
+            })
 
 def _get_mock_data_fallback(ym: str) -> Dict[str, Any]:
     """Dados de fallback quando serviços falham"""
