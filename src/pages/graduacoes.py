@@ -367,10 +367,6 @@ def exibir_candidatos_promocao():
             key="meses_minimos_filter"
         )
     
-    with col2:
-        if st.button("🔄 Atualizar Lista", type="primary"):
-            st.session_state['atualizar_candidatos'] = True
-    
     try:
         filtros = {'meses_minimos_graduacao': meses_minimos}
         candidatos = graduacoes_service.listar_candidatos_promocao(filtros)

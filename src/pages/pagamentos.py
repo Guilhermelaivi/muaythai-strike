@@ -79,137 +79,120 @@ def show_pagamentos():
         _mostrar_estatisticas_pagamentos(pagamentos_service)
 
 def _mostrar_lista_pagamentos(pagamentos_service: PagamentosService, alunos_service: AlunosService):
-    """Mostra a lista de pagamentos com filtros"""
+    """Mostra busca de alunos e seus pagamentos em painéis expansíveis"""
     
-    st.markdown("### 📋 Lista de Pagamentos")
+    st.markdown("### � Buscar Pagamentos por Aluno")
     
-    # Filtros
-    col1, col2, col3, col4 = st.columns([1, 1, 1, 1])
+    # Campo de busca por nome do aluno
+    col1, col2 = st.columns([3, 1])
     
     with col1:
-        status_filtro = st.selectbox(
-            "🎯 Status:",
-            options=["Todos", "pago", "inadimplente", "ausente"],
-            index=0
+        termo_busca = st.text_input(
+            "🔍 Digite o nome do aluno:",
+            placeholder="Ex: João Silva, Maria...",
+            help="Digite pelo menos 2 caracteres para buscar"
         )
     
     with col2:
-        # Gerar opções de mês/ano (últimos 12 meses)
-        hoje = date.today()
-        meses_opcoes = ["Todos"]
-        for i in range(12):
-            if i == 0:
-                mes_ano = f"{hoje.year:04d}-{hoje.month:02d}"
-            else:
-                mes = hoje.month - i
-                ano = hoje.year
-                if mes <= 0:
-                    mes += 12
-                    ano -= 1
-                mes_ano = f"{ano:04d}-{mes:02d}"
-            meses_opcoes.append(mes_ano)
-        
-        ym_filtro = st.selectbox(
-            "📅 Mês/Ano:",
-            options=meses_opcoes,
-            index=0
-        )
-    
-    with col3:
-        exigivel_filtro = st.selectbox(
-            "💰 Exigível:",
-            options=["Todos", "Sim", "Não"],
-            index=0
-        )
-    
-    with col4:
-        if st.button("🔄 Atualizar", use_container_width=True):
+        st.write("") # Spacer
+        limpar_busca = st.button("🗑️ Limpar", use_container_width=True)
+        if limpar_busca:
             st.rerun()
     
-    # Montar filtros
-    filtros = {}
-    if status_filtro != "Todos":
-        filtros['status'] = status_filtro
+    # Se não há termo de busca, mostrar instruções
+    if not termo_busca or len(termo_busca.strip()) < 2:
+        st.info("ℹ️ Digite pelo menos 2 caracteres no campo de busca para encontrar alunos e ver seus pagamentos.")
+        return
     
-    if ym_filtro != "Todos":
-        filtros['ym'] = ym_filtro
-    
-    if exigivel_filtro != "Todos":
-        filtros['exigivel'] = exigivel_filtro == "Sim"
-    
-    # Carregar pagamentos
+    # Buscar alunos que correspondem ao termo
     try:
-        pagamentos = pagamentos_service.listar_pagamentos(filtros=filtros)
+        alunos_encontrados = alunos_service.buscar_alunos_por_nome(termo_busca.strip())
         
-        if not pagamentos:
-            st.info("ℹ️ Nenhum pagamento encontrado com os filtros aplicados.")
+        if not alunos_encontrados:
+            st.warning(f"❌ Nenhum aluno encontrado com o termo: '{termo_busca}'")
             return
-        
-        # Exibir em formato de cards
-        for i, pagamento in enumerate(pagamentos):
-            status = pagamento.get('status', 'indefinido')
             
-            # Definir cor e emoji por status
-            if status == 'pago':
-                cor = "🟢"
-                cor_st = "success"
-            elif status == 'inadimplente':
-                cor = "🔴"
-                cor_st = "error"
-            elif status == 'ausente':
-                cor = "⚪"
-                cor_st = "info"
-            else:
-                cor = "⚫"
-                cor_st = "secondary"
+        st.success(f"✅ {len(alunos_encontrados)} aluno(s) encontrado(s)")
+        
+        # Para cada aluno encontrado, mostrar seus pagamentos em painel expansível
+        for aluno in alunos_encontrados:
+            aluno_id = aluno.get('id')
+            aluno_nome = aluno.get('nome', 'Nome não informado')
+            aluno_status = aluno.get('status', 'indefinido')
             
-            # Card do pagamento
-            with st.container():
-                col1, col2, col3, col4 = st.columns([3, 2, 2, 1])
+            # Status do aluno com emoji
+            status_emoji = "🟢" if aluno_status == "ativo" else "🔴"
+            
+            # Buscar pagamentos do aluno
+            pagamentos_aluno = pagamentos_service.listar_pagamentos_por_aluno(aluno_id)
+            total_pagamentos = len(pagamentos_aluno)
+            
+            # Calcular estatísticas rápidas
+            pagos = sum(1 for p in pagamentos_aluno if p.get('status') == 'pago')
+            inadimplentes = sum(1 for p in pagamentos_aluno if p.get('status') == 'inadimplente')
+            
+            # Painel expansível para cada aluno
+            with st.expander(
+                f"{status_emoji} {aluno_nome} - {total_pagamentos} pagamento(s) | ✅ {pagos} pago(s) | ❌ {inadimplentes} inadimplente(s)",
+                expanded=len(alunos_encontrados) == 1  # Expande automaticamente se só há 1 aluno
+            ):
+                if not pagamentos_aluno:
+                    st.info(f"📭 Nenhum pagamento encontrado para {aluno_nome}")
+                    continue
                 
-                with col1:
-                    st.markdown(f"**{cor} {pagamento.get('alunoNome', 'N/A')}**")
-                    st.markdown(f"📅 {pagamento.get('ym', 'N/A')}")
+                # Organizar pagamentos por ano/mês (mais recente primeiro)
+                pagamentos_ordenados = sorted(
+                    pagamentos_aluno, 
+                    key=lambda x: x.get('ym', ''), 
+                    reverse=True
+                )
                 
-                with col2:
-                    st.markdown(f"💰 R$ {pagamento.get('valor', 0):.2f}")
-                    st.markdown(f"📊 {status.title()}")
-                
-                with col3:
-                    exigivel_texto = "Sim" if pagamento.get('exigivel', True) else "Não"
-                    st.markdown(f"💳 Exigível: {exigivel_texto}")
+                # Mostrar pagamentos em formato compacto
+                for pagamento in pagamentos_ordenados:
+                    status = pagamento.get('status', 'indefinido')
+                    ym = pagamento.get('ym', 'Data não informada')
+                    valor = pagamento.get('valor', 0)
+                    exigivel = pagamento.get('exigivel', False)
                     
-                    if status == 'pago' and pagamento.get('paidAt'):
-                        # Converter timestamp para data legível
-                        try:
-                            paid_date = pagamento.get('paidAt')
-                            if hasattr(paid_date, 'strftime'):
-                                st.markdown(f"✅ Pago em: {paid_date.strftime('%d/%m/%Y')}")
-                            else:
-                                st.markdown(f"✅ Pago")
-                        except:
-                            st.markdown(f"✅ Pago")
-                
-                with col4:
-                    # Ações rápidas
-                    if status != 'pago':
-                        if st.button("💰 Pagar", key=f"pagar_{pagamento.get('id')}", use_container_width=True):
-                            if pagamentos_service.marcar_como_pago(pagamento.get('id')):
-                                st.success("Pagamento registrado!")
-                                st.rerun()
+                    # Definir cor e emoji por status
+                    if status == 'pago':
+                        cor = "🟢"
+                        status_texto = "Pago"
+                    elif status == 'inadimplente':
+                        cor = "🔴"
+                        status_texto = "Inadimplente"
+                    elif status == 'ausente':
+                        cor = "🟡"
+                        status_texto = "Ausente"
+                    else:
+                        cor = "⚪"
+                        status_texto = "Indefinido"
                     
-                    if st.button("✏️ Editar", key=f"edit_{pagamento.get('id')}", use_container_width=True):
-                        st.session_state.pagamento_editando = pagamento.get('id')
-                        st.session_state.pagamentos_modo = 'editar'
-                        st.rerun()
-                
-                st.markdown("---")
-        
-        # Resumo
-        st.markdown(f"**📊 Total: {len(pagamentos)} pagamento(s) encontrado(s)**")
-        
+                    exigivel_texto = "💰 Exigível" if exigivel else "🚫 Não exigível"
+                    
+                    # Layout compacto para cada pagamento
+                    col_mes, col_status, col_valor, col_acoes = st.columns([2, 2, 2, 1])
+                    
+                    with col_mes:
+                        st.write(f"📅 **{ym}**")
+                    
+                    with col_status:
+                        st.write(f"{cor} **{status_texto}**")
+                    
+                    with col_valor:
+                        st.write(f"💵 **R$ {valor:.2f}**")
+                        st.caption(exigivel_texto)
+                    
+                    with col_acoes:
+                        if st.button("✏️", key=f"edit_{pagamento.get('id')}", help="Editar pagamento"):
+                            st.session_state.pagamento_editando = pagamento.get('id')
+                            st.session_state.pagamentos_modo = 'editar'
+                            st.rerun()
+                    
+                    st.divider()
+    
     except Exception as e:
-        st.error(f"❌ Erro ao carregar pagamentos: {str(e)}")
+        st.error(f"❌ Erro ao buscar pagamentos: {str(e)}")
 
 def _mostrar_formulario_editar_pagamento(pagamentos_service: PagamentosService, alunos_service: AlunosService):
     """Mostra formulário para editar pagamento existente"""
@@ -559,10 +542,6 @@ def _mostrar_inadimplentes(pagamentos_service: PagamentosService):
             meses_opcoes.append(mes_ano)
         
         mes_filtro = st.selectbox("📅 Filtrar por mês:", options=meses_opcoes, index=1)
-    
-    with col2:
-        if st.button("🔄 Atualizar Lista", use_container_width=True):
-            st.rerun()
     
     # Carregar inadimplentes
     try:

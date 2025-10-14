@@ -460,3 +460,38 @@ class PagamentosService:
             
         except Exception as e:
             raise Exception(f"Erro ao gerar pagamentos do mês: {str(e)}")
+    
+    def listar_pagamentos_por_aluno(self, aluno_id: str) -> list:
+        """
+        Lista todos os pagamentos de um aluno específico
+        
+        Args:
+            aluno_id: ID do aluno
+            
+        Returns:
+            Lista de pagamentos do aluno ordenados por data (mais recente primeiro)
+        """
+        try:
+            if not aluno_id:
+                return []
+            
+            # Buscar todos os pagamentos do aluno
+            query = self.db.collection(self.collection_name).where(
+                filter=FieldFilter('alunoId', '==', aluno_id)
+            )
+            
+            docs = query.stream()
+            
+            pagamentos = []
+            for doc in docs:
+                pagamento = doc.to_dict()
+                pagamento['id'] = doc.id
+                pagamentos.append(pagamento)
+            
+            # Ordenar por ym (mais recente primeiro)
+            pagamentos.sort(key=lambda x: x.get('ym', ''), reverse=True)
+            
+            return pagamentos
+            
+        except Exception as e:
+            raise Exception(f"Erro ao buscar pagamentos do aluno: {str(e)}")

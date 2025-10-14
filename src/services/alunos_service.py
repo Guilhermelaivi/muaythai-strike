@@ -394,3 +394,47 @@ class AlunosService:
         except Exception as e:
             st.error(f"❌ Erro ao obter estatísticas: {str(e)}")
             raise e
+    
+    def buscar_alunos_por_nome(self, termo_busca: str) -> list:
+        """
+        Busca alunos pelo nome (busca parcial, insensível a maiúsculas)
+        
+        Args:
+            termo_busca: Termo a ser buscado no nome
+            
+        Returns:
+            Lista de alunos que correspondem ao termo de busca
+        """
+        try:
+            if not termo_busca or len(termo_busca.strip()) < 2:
+                return []
+            
+            # Normalizar termo de busca
+            termo_normalizado = termo_busca.strip().lower()
+            
+            # Buscar todos os alunos e filtrar no cliente
+            # (Firestore não tem busca full-text nativa)
+            todos_alunos = self.listar_alunos()
+            
+            # Filtrar alunos que contêm o termo no nome
+            alunos_encontrados = []
+            for aluno in todos_alunos:
+                nome = aluno.get('nome', '').lower()
+                if termo_normalizado in nome:
+                    alunos_encontrados.append(aluno)
+            
+            # Ordenar por relevância (nomes que começam com o termo primeiro)
+            def relevancia(aluno):
+                nome = aluno.get('nome', '').lower()
+                if nome.startswith(termo_normalizado):
+                    return 0  # Maior relevância
+                else:
+                    return 1  # Menor relevância
+            
+            alunos_encontrados.sort(key=relevancia)
+            
+            return alunos_encontrados
+            
+        except Exception as e:
+            st.error(f"❌ Erro ao buscar alunos: {str(e)}")
+            return []

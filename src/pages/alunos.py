@@ -75,7 +75,7 @@ def _mostrar_lista_alunos(alunos_service: AlunosService):
     st.markdown("### 📋 Lista de Alunos")
     
     # Filtros
-    col1, col2, col3 = st.columns([1, 1, 2])
+    col1, col2 = st.columns(2)
     
     with col1:
         filtro_status = st.selectbox(
@@ -90,11 +90,6 @@ def _mostrar_lista_alunos(alunos_service: AlunosService):
             options=["nome", "status", "vencimentoDia", "ativoDesde"],
             index=0
         )
-    
-    with col3:
-        st.write("") # Spacer
-        if st.button("🔄 Atualizar Lista", use_container_width=True):
-            st.rerun()
     
     # Carregar e filtrar alunos
     try:
