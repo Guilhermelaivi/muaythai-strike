@@ -1,1 +1,1 @@
-web: streamlit run simple_health.py --server.port $PORT --server.headless true --server.enableCORS false --server.enableXsrfProtection false --server.address 0.0.0.0
+web: python -c "import streamlit.web.cli as stcli; import sys; sys.argv = ['streamlit', 'run', 'test_basic.py', '--server.port=' + str(__import__('os').environ.get('PORT', 8501)), '--server.address=0.0.0.0', '--server.headless=true']; stcli.main()"

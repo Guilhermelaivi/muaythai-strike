@@ -1,5 +1,0 @@
-[build]
-builder = "Railpack"
-
-[deploy]
-startCommand = "streamlit run test_basic.py --server.port=${PORT:-8501} --server.headless=true --server.address=0.0.0.0"
