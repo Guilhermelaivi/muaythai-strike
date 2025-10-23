@@ -2,4 +2,4 @@
 builder = "Railpack"
 
 [deploy]
-startCommand = "streamlit run simple_health.py --server.port $PORT --server.headless true --server.enableCORS false --server.enableXsrfProtection false --server.address 0.0.0.0"
+startCommand = "streamlit run app_simple.py --server.port $PORT --server.headless true --server.enableCORS false --server.enableXsrfProtection false --server.address 0.0.0.0"
