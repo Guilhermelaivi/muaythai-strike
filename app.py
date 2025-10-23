@@ -8,6 +8,7 @@ Version: 1.0.0-MVP
 
 import streamlit as st
 import sys
+import os
 from pathlib import Path
 
 # Adicionar src ao path para imports
@@ -20,6 +21,11 @@ from utils.firebase_config import FirebaseConfig
 
 def main():
     """Função principal da aplicação"""
+    
+    # Verificar se está rodando corretamente
+    if 'streamlit' not in sys.modules:
+        st.error("Aplicação deve ser executada com 'streamlit run app.py'")
+        return
     
     # Configuração da página
     st.set_page_config(
