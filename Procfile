@@ -1,1 +1,1 @@
-web: streamlit run health_check.py --server.port=$PORT --server.address=0.0.0.0
+web: streamlit run simple_health.py --server.port $PORT --server.headless true --server.enableCORS false --server.enableXsrfProtection false --server.address 0.0.0.0
