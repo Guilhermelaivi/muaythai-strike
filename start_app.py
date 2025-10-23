@@ -1,23 +1,38 @@
 #!/usr/bin/env python3
 """
-🚀 Dojo Management System - Startup Script
-Ativa ambiente virtual e inicia a aplicação Streamlit
+🚀 RAILWAY DEPLOY - Script de inicialização forçada
 """
 
 import os
 import sys
 import subprocess
-import platform
 
-def print_banner():
-    """Exibe banner de inicialização"""
-    print("\n" + "=" * 50)
-    print("    🚀 Dojo Management System")
-    print("=" * 50)
-    print("📍 URL: http://localhost:8501")
-    print("🔑 Login: admin / admin123")
-    print("=" * 50)
-    print()
+def main():
+    print("🚀 RAILWAY STARTUP SCRIPT")
+    
+    # Obter porta do Railway
+    port = os.environ.get('PORT', '8501')
+    print(f"🔧 Porta Railway: {port}")
+    
+    # Comando direto para Railway
+    cmd = [
+        'streamlit', 'run', 'test_basic.py',
+        f'--server.port={port}',
+        '--server.address=0.0.0.0',
+        '--server.headless=true'
+    ]
+    
+    print(f"� Comando: {' '.join(cmd)}")
+    
+    # Executar
+    try:
+        subprocess.run(cmd, check=True)
+    except Exception as e:
+        print(f"❌ Erro: {e}")
+        sys.exit(1)
+
+if __name__ == '__main__':
+    main()
 
 def check_venv():
     """Verifica se o ambiente virtual existe"""

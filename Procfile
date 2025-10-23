@@ -1,1 +1,1 @@
-web: python -c "import streamlit.web.cli as stcli; import sys; sys.argv = ['streamlit', 'run', 'test_basic.py', '--server.port=' + str(__import__('os').environ.get('PORT', 8501)), '--server.address=0.0.0.0', '--server.headless=true']; stcli.main()"
+web: python railway_start.py
