@@ -22,21 +22,22 @@ def show_dashboard():
     # Detectar período dos dados reais
     periodo_disponivel = _get_available_period()
     
-    # Seletor de mês
+    # Seletor de mês (dinâmico baseado na data atual)
     col1, col2, col3 = st.columns([2, 2, 6])
     
     with col1:
         current_year = datetime.now().year
+        current_month = datetime.now().month
         
-        # Usar período real dos dados ou fallback para ano atual
+        # Anos disponíveis: desde o ano dos dados até o ano atual
         if periodo_disponivel['anos']:
-            anos_disponiveis = sorted(periodo_disponivel['anos'])
-            default_year_index = len(anos_disponiveis) - 1  # Último ano
-            if current_year in anos_disponiveis:
-                default_year_index = anos_disponiveis.index(current_year)
+            min_year = min(periodo_disponivel['anos'])
+            anos_disponiveis = list(range(min_year, current_year + 1))
         else:
             anos_disponiveis = [current_year]
-            default_year_index = 0
+        
+        # Ano padrão é o atual
+        default_year_index = len(anos_disponiveis) - 1
         
         selected_year = st.selectbox(
             "Ano:", 
@@ -45,14 +46,28 @@ def show_dashboard():
         )
     
     with col2:
+        # Determinar meses disponíveis baseado no ano selecionado
+        if selected_year == current_year:
+            # Para o ano atual, só mostrar até o mês atual
+            meses_disponiveis = list(range(1, current_month + 1))
+        else:
+            # Para anos anteriores, mostrar todos os meses
+            meses_disponiveis = list(range(1, 13))
+        
         # Adicionar opção "Todos" para mostrar dados anuais
-        meses_opcoes = ["Todos"] + list(range(1, 13))
-        meses_labels = ["Todos os meses"] + [f"{x:02d}" for x in range(1, 13)]
+        meses_opcoes = ["Todos"] + meses_disponiveis
+        meses_labels = ["Todos os meses"] + [f"{x:02d}" for x in meses_disponiveis]
+        
+        # Índice padrão: mês atual se ano atual, senão último mês disponível
+        if selected_year == current_year:
+            default_month_index = len(meses_opcoes) - 1  # Último mês (atual)
+        else:
+            default_month_index = len(meses_opcoes) - 1  # Último mês do ano
         
         selected_month_option = st.selectbox(
             "Mês:",
             options=meses_opcoes,
-            index=datetime.now().month,  # Mês atual (não mais -1 porque temos "Todos" no início)
+            index=default_month_index,
             format_func=lambda x: meses_labels[meses_opcoes.index(x)]
         )
         

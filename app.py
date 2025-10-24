@@ -166,13 +166,11 @@ def main():
         else:
             logger.info(f"✅ Variáveis encontradas - Project: {firebase_project}")
             logger.info("🔄 Conectando ao Firebase...")
-            st.write("🔄 Conectando ao Firebase...")
             
             firebase_config = FirebaseConfig()
             
             if firebase_config.is_connected():
                 logger.info("✅ Firebase conectado com sucesso!")
-                st.success("✅ Firebase conectado com sucesso!")
                 log_step("Inicialização do Firebase", step_start)
             else:
                 logger.warning("⚠️ Firebase não conectou - modo degradado")
