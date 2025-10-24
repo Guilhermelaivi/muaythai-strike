@@ -25,21 +25,26 @@ signal.signal(signal.SIGINT, signal_handler)
 def main():
     print("🚀 STARTUP ÚNICO - Railway Deploy")
     
-    # Obter porta
+    # Obter porta do Railway (não hardcode 8501!)
     port = os.environ.get('PORT', '8501')
-    print(f"📡 Porta: {port}")
+    entry = os.environ.get('ENTRYPOINT', 'test_basic.py')
+    
+    print(f"� Entry: {entry}")
+    print(f"�📡 Porta (env PORT): {port}")
     
     # Verificar arquivo
-    if not os.path.exists('test_basic.py'):
-        print("❌ test_basic.py não encontrado!")
+    if not os.path.exists(entry):
+        print(f"❌ {entry} não encontrado!")
         sys.exit(1)
     
-    # Comando simples
+    # Comando otimizado
     cmd = [
-        'streamlit', 'run', 'test_basic.py',
-        f'--server.port={port}',
-        '--server.address=0.0.0.0',
-        '--server.headless=true'
+        sys.executable, '-m', 'streamlit', 'run', entry,
+        '--server.port', str(port),
+        '--server.address', '0.0.0.0',
+        '--server.headless', 'true',
+        '--server.enableCORS', 'false',
+        '--server.enableXsrfProtection', 'false'
     ]
     
     print(f"🔥 Executando: {' '.join(cmd)}")
