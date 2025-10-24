@@ -27,7 +27,7 @@ def main():
     
     # Obter porta do Railway
     port = os.environ.get('PORT', '8501')
-    entry = os.environ.get('ENTRYPOINT', 'app_production.py')  # App de produção
+    entry = os.environ.get('ENTRYPOINT', 'app.py')  # Projeto REAL com Firestore
     
     print(f"� Entry: {entry}")
     print(f"�📡 Porta (env PORT): {port}")
