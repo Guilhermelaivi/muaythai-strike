@@ -57,28 +57,57 @@ class FirebaseConfig:
         
         # Fallback para variáveis de ambiente (produção)
         try:
-            # Método 1: GOOGLE_APPLICATION_CREDENTIALS como JSON string
+            # Debug das credenciais
             google_creds = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
-            if google_creds:
-                # Se é um caminho de arquivo
-                if os.path.exists(google_creds):
-                    self.cred = credentials.Certificate(google_creds)
-                else:
-                    # Se é o JSON como string (Render)
-                    cred_dict = json.loads(google_creds)
-                    self.cred = credentials.Certificate(cred_dict)
+            project_id = os.getenv("FIREBASE_PROJECT_ID")
+            
+            if not google_creds:
+                raise ValueError("GOOGLE_APPLICATION_CREDENTIALS não encontrada")
+            
+            # Log de debug (sem expor credenciais)
+            print(f"🔧 Tamanho das credenciais: {len(google_creds)} chars")
+            print(f"🔧 Project ID: {project_id}")
+            
+            # Método 1: Se é um caminho de arquivo
+            if os.path.exists(google_creds):
+                self.cred = credentials.Certificate(google_creds)
                 return
             
-            # Método 2: Usando project_id separadamente
-            project_id = os.getenv("FIREBASE_PROJECT_ID")
-            if project_id and google_creds:
-                cred_dict = json.loads(google_creds)
-                # Garantir que project_id está correto
-                cred_dict["project_id"] = project_id
+            # Método 2: JSON string - com validação robusta
+            try:
+                # Limpar string (remover espaços, quebras de linha extras)
+                google_creds_clean = google_creds.strip()
+                
+                # Tentar parse do JSON
+                cred_dict = json.loads(google_creds_clean)
+                
+                # Validar keys obrigatórias
+                required_keys = ["type", "project_id", "private_key_id", "private_key", "client_email"]
+                missing_keys = [key for key in required_keys if key not in cred_dict]
+                
+                if missing_keys:
+                    raise ValueError(f"Chaves obrigatórias ausentes no JSON: {missing_keys}")
+                
+                # Garantir project_id consistente
+                if project_id and cred_dict.get("project_id") != project_id:
+                    print(f"⚠️ Project ID inconsistente. Usando: {project_id}")
+                    cred_dict["project_id"] = project_id
+                
                 self.cred = credentials.Certificate(cred_dict)
+                print("✅ Credenciais Firebase carregadas com sucesso!")
                 return
                 
-            raise ValueError("Credenciais do Firebase não encontradas nas variáveis de ambiente")
+            except json.JSONDecodeError as e:
+                # Diagnóstico detalhado do erro JSON
+                error_context = ""
+                if e.pos < len(google_creds):
+                    start = max(0, e.pos - 30)
+                    end = min(len(google_creds), e.pos + 30)
+                    error_context = google_creds[start:end]
+                
+                raise ValueError(f"JSON inválido na posição {e.pos}: {e.msg}. Contexto: {error_context}")
+                
+            raise ValueError("Não foi possível carregar credenciais de nenhuma fonte")
             
         except json.JSONDecodeError as e:
             raise ValueError(f"Erro ao decodificar credenciais JSON: {e}")
