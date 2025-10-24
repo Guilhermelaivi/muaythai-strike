@@ -23,11 +23,11 @@ signal.signal(signal.SIGTERM, signal_handler)
 signal.signal(signal.SIGINT, signal_handler)
 
 def main():
-    print("🚀 STARTUP ÚNICO - Railway Deploy")
+    print("🚀 DOJO MANAGEMENT SYSTEM - Railway Deploy")
     
-    # Obter porta do Railway (não hardcode 8501!)
+    # Obter porta do Railway
     port = os.environ.get('PORT', '8501')
-    entry = os.environ.get('ENTRYPOINT', 'test_basic.py')
+    entry = os.environ.get('ENTRYPOINT', 'app_production.py')  # App de produção
     
     print(f"� Entry: {entry}")
     print(f"�📡 Porta (env PORT): {port}")
