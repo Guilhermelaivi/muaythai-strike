@@ -149,22 +149,29 @@ def main():
     firebase_config = None
     step_start = log_step("Inicialização do Firebase")
     try:
-        logger.info("🔄 Verificando variáveis de ambiente do Firebase...")
+        logger.info("🔄 Verificando configuração do Firebase...")
         
-        # Verificar se as variáveis existem
+        # Verificar se as configurações existem (env vars OU secrets.toml)
         google_creds = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
         firebase_project = os.getenv("FIREBASE_PROJECT_ID")
+        has_secrets = "firebase" in st.secrets
         
-        if not google_creds:
-            logger.error("❌ GOOGLE_APPLICATION_CREDENTIALS não encontrada")
+        # Ambiente local usa secrets.toml, produção usa env vars
+        if not google_creds and not has_secrets:
+            logger.error("❌ Credenciais Firebase não encontradas (nem env vars nem secrets.toml)")
             st.error("❌ Credenciais Firebase não configuradas")
             st.info("🔄 Continuando em modo degradado...")
-        elif not firebase_project:
+        elif not firebase_project and not has_secrets:
             logger.error("❌ FIREBASE_PROJECT_ID não encontrada")
             st.error("❌ Project ID Firebase não configurado")
             st.info("🔄 Continuando em modo degradado...")
         else:
-            logger.info(f"✅ Variáveis encontradas - Project: {firebase_project}")
+            # Log apropriado baseado na fonte
+            if has_secrets:
+                logger.info(f"✅ Configuração encontrada em secrets.toml - Project: {st.secrets['firebase'].get('project_id', 'N/A')}")
+            else:
+                logger.info(f"✅ Variáveis de ambiente encontradas - Project: {firebase_project}")
+            
             logger.info("🔄 Conectando ao Firebase...")
             
             firebase_config = FirebaseConfig()

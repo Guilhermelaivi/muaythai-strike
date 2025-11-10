@@ -8,6 +8,7 @@ import pandas as pd
 from datetime import date, datetime
 from typing import Dict, Any, List
 from src.services.alunos_service import AlunosService
+from src.services.graduacoes_service import GraduacoesService
 
 def show_alunos():
     """Exibe a página de gerenciamento de alunos"""
@@ -74,27 +75,112 @@ def _mostrar_lista_alunos(alunos_service: AlunosService):
     
     st.markdown("### 📋 Lista de Alunos")
     
+    # Inicializar serviço de graduações
+    if 'graduacoes_service' not in st.session_state:
+        try:
+            st.session_state.graduacoes_service = GraduacoesService()
+        except Exception as e:
+            st.warning(f"⚠️ Serviço de graduações indisponível: {str(e)}")
+            st.session_state.graduacoes_service = None
+    
+    graduacoes_service = st.session_state.graduacoes_service
+    
     # Filtros
-    col1, col2 = st.columns(2)
+    col1, col2, col3, col4 = st.columns(4)
+    
+    # Inicializar estado dos filtros se não existir
+    if 'filtro_status_alunos' not in st.session_state:
+        st.session_state.filtro_status_alunos = 0
+    if 'filtro_turma_alunos' not in st.session_state:
+        st.session_state.filtro_turma_alunos = 0
+    if 'filtro_vencimento_alunos' not in st.session_state:
+        st.session_state.filtro_vencimento_alunos = 0
+    if 'ordenar_por_alunos' not in st.session_state:
+        st.session_state.ordenar_por_alunos = 0
     
     with col1:
         filtro_status = st.selectbox(
-            "🎯 Filtrar por Status:",
+            "🎯 Status:",
             options=["Todos", "Ativo", "Inativo"],
-            index=0
+            index=st.session_state.filtro_status_alunos,
+            key="select_status_alunos"
         )
+        st.session_state.filtro_status_alunos = ["Todos", "Ativo", "Inativo"].index(filtro_status)
     
     with col2:
-        ordenar_por = st.selectbox(
-            "📊 Ordenar por:",
-            options=["nome", "status", "vencimentoDia", "ativoDesde"],
-            index=0
+        # Buscar turmas disponíveis
+        try:
+            todos_alunos = alunos_service.listar_alunos()
+            turmas_disponiveis = sorted(list(set([a.get('turma', '') for a in todos_alunos if a.get('turma')])))
+            turmas_opcoes = ["Todas"] + turmas_disponiveis
+        except:
+            turmas_opcoes = ["Todas"]
+        
+        filtro_turma = st.selectbox(
+            "👥 Turma:",
+            options=turmas_opcoes,
+            index=st.session_state.filtro_turma_alunos,
+            key="select_turma_alunos"
         )
+        st.session_state.filtro_turma_alunos = turmas_opcoes.index(filtro_turma)
+    
+    with col3:
+        # Buscar vencimentos disponíveis
+        try:
+            vencimentos_disponiveis = sorted(list(set([a.get('vencimentoDia') for a in todos_alunos if a.get('vencimentoDia')])))
+            vencimentos_opcoes = ["Todos"] + [str(v) for v in vencimentos_disponiveis]
+        except:
+            vencimentos_opcoes = ["Todos"]
+        
+        filtro_vencimento = st.selectbox(
+            "📅 Vencimento:",
+            options=vencimentos_opcoes,
+            index=st.session_state.filtro_vencimento_alunos,
+            key="select_vencimento_alunos"
+        )
+        st.session_state.filtro_vencimento_alunos = vencimentos_opcoes.index(filtro_vencimento)
+    
+    with col4:
+        ordenar_por = st.selectbox(
+            "📊 Ordenar:",
+            options=["nome", "status", "vencimentoDia", "ativoDesde", "turma"],
+            index=st.session_state.ordenar_por_alunos,
+            key="select_ordenar_alunos",
+            format_func=lambda x: {
+                "nome": "Nome",
+                "status": "Status",
+                "vencimentoDia": "Vencimento",
+                "ativoDesde": "Data Cadastro",
+                "turma": "Turma"
+            }.get(x, x)
+        )
+        st.session_state.ordenar_por_alunos = ["nome", "status", "vencimentoDia", "ativoDesde", "turma"].index(ordenar_por)
+    
+    # Botão Limpar Filtros
+    col_btn1, col_btn2, col_btn3 = st.columns([1, 1, 4])
+    with col_btn1:
+        if st.button("🔄 Limpar Filtros", use_container_width=True):
+            st.session_state.filtro_status_alunos = 0
+            st.session_state.filtro_turma_alunos = 0
+            st.session_state.filtro_vencimento_alunos = 0
+            st.session_state.ordenar_por_alunos = 0
+            st.rerun()
+    
+    st.markdown("---")
     
     # Carregar e filtrar alunos
     try:
         status_filtro = None if filtro_status == "Todos" else filtro_status.lower()
         alunos = alunos_service.listar_alunos(status=status_filtro, ordenar_por=ordenar_por)
+        
+        # Aplicar filtro de turma
+        if filtro_turma != "Todas":
+            alunos = [a for a in alunos if a.get('turma') == filtro_turma]
+        
+        # Aplicar filtro de vencimento
+        if filtro_vencimento != "Todos":
+            vencimento_num = int(filtro_vencimento)
+            alunos = [a for a in alunos if a.get('vencimentoDia') == vencimento_num]
         
         if not alunos:
             st.info("📭 Nenhum aluno encontrado. Cadastre o primeiro aluno!")
@@ -111,8 +197,31 @@ def _mostrar_lista_alunos(alunos_service: AlunosService):
             contato = aluno.get('contato', {})
             telefone = contato.get('telefone', 'N/A') if isinstance(contato, dict) else 'N/A'
             
+            # Obter graduação atual e histórico
+            graduacao_atual = aluno.get('graduacao', 'Sem graduação')
+            graduacao_tooltip = graduacao_atual
+            
+            # Buscar histórico de graduações se disponível
+            if graduacoes_service and aluno.get('id'):
+                try:
+                    historico = graduacoes_service.listar_graduacoes_aluno(aluno.get('id'))
+                    if historico:
+                        # Criar tooltip com histórico
+                        historico_texto = []
+                        for idx, grad in enumerate(reversed(historico[-5:])):  # Últimas 5 graduações
+                            data_grad = grad.get('data', 'N/A')
+                            nivel_grad = grad.get('nivel', 'N/A')
+                            historico_texto.append(f"{idx+1}. {nivel_grad} ({data_grad})")
+                        
+                        if historico_texto:
+                            graduacao_tooltip = "Histórico:\n" + "\n".join(historico_texto)
+                except Exception:
+                    pass  # Silenciosamente falhar se não conseguir buscar
+            
             dados_tabela.append({
                 'Nome': aluno.get('nome', ''),
+                'Graduação': graduacao_atual,
+                'Graduação_Tooltip': graduacao_tooltip,
                 'Status': status_texto,
                 'Vencimento': f"Dia {aluno.get('vencimentoDia', 'N/A')}",
                 'Telefone': telefone,
@@ -127,12 +236,18 @@ def _mostrar_lista_alunos(alunos_service: AlunosService):
         # Configurar exibição das colunas
         column_config = {
             "ID": None,  # Esconder ID
+            "Graduação_Tooltip": None,  # Esconder coluna de tooltip
             "Nome": st.column_config.TextColumn("👤 Nome", width="large"),
-            "Status": st.column_config.TextColumn("📊 Status", width="medium"),
-            "Vencimento": st.column_config.TextColumn("📅 Vencimento", width="small"),
+            "Graduação": st.column_config.TextColumn(
+                "🥋 Graduação", 
+                width="medium",
+                help="Graduação atual do aluno. Selecione a linha para ver histórico completo."
+            ),
+            "Status": st.column_config.TextColumn("📊 Status", width="small"),
+            "Vencimento": st.column_config.TextColumn("📅 Venc.", width="small"),
             "Telefone": st.column_config.TextColumn("📞 Telefone", width="medium"),
-            "Turma": st.column_config.TextColumn("🥋 Turma", width="medium"),
-            "Ativo Desde": st.column_config.TextColumn("📆 Ativo Desde", width="medium")
+            "Turma": st.column_config.TextColumn("👥 Turma", width="small"),
+            "Ativo Desde": st.column_config.TextColumn("📆 Desde", width="small")
         }
         
         # Mostrar dataframe interativo
@@ -152,6 +267,29 @@ def _mostrar_lista_alunos(alunos_service: AlunosService):
             
             st.markdown("---")
             st.markdown(f"### 🎯 Aluno Selecionado: **{aluno_selecionado['Nome']}**")
+            
+            # Exibir histórico de graduações do aluno selecionado
+            if graduacoes_service and aluno_selecionado['Graduação_Tooltip'].startswith('Histórico:'):
+                with st.expander("🎓 Histórico de Graduações", expanded=False):
+                    try:
+                        historico = graduacoes_service.listar_graduacoes_aluno(aluno_selecionado['ID'])
+                        if historico:
+                            st.markdown(f"**Graduação Atual:** {aluno_selecionado['Graduação']}")
+                            st.markdown("**Histórico completo:**")
+                            
+                            for idx, grad in enumerate(reversed(historico), 1):
+                                data_grad = grad.get('data', 'N/A')
+                                nivel_grad = grad.get('nivel', 'N/A')
+                                obs_grad = grad.get('obs', '')
+                                
+                                if obs_grad:
+                                    st.markdown(f"{idx}. **{nivel_grad}** - {data_grad} _{obs_grad}_")
+                                else:
+                                    st.markdown(f"{idx}. **{nivel_grad}** - {data_grad}")
+                        else:
+                            st.info("Nenhuma graduação registrada ainda.")
+                    except Exception as e:
+                        st.error(f"Erro ao carregar histórico: {str(e)}")
             
             col1, col2, col3, col4 = st.columns(4)
             
