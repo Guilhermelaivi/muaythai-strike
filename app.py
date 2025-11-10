@@ -154,7 +154,13 @@ def main():
         # Verificar se as configurações existem (env vars OU secrets.toml)
         google_creds = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
         firebase_project = os.getenv("FIREBASE_PROJECT_ID")
-        has_secrets = "firebase" in st.secrets
+        
+        # Verificar secrets.toml com tratamento de erro
+        has_secrets = False
+        try:
+            has_secrets = "firebase" in st.secrets
+        except Exception:
+            pass  # secrets.toml não existe (produção)
         
         # Ambiente local usa secrets.toml, produção usa env vars
         if not google_creds and not has_secrets:
