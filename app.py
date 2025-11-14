@@ -219,8 +219,8 @@ def main():
                     "👥 Alunos", 
                     "💰 Pagamentos", 
                     "✅ Presenças", 
-                    "🥋 Graduações", 
-                    "🥋 Turmas"
+                    "🎓 Graduações", 
+                    "👨‍👩‍👧‍👦 Turmas"
                 ]
             )
         log_step("Construção da sidebar e navegação", step_start)
@@ -244,10 +244,10 @@ def main():
         elif page == "✅ Presenças":
             from pages.presencas import show_presencas
             show_presencas()
-        elif page == "🥋 Graduações":
+        elif page == "🎓 Graduações":
             from pages.graduacoes import show_graduacoes
             show_graduacoes()
-        elif page == "🥋 Turmas":
+        elif page == "👨‍👩‍👧‍👦 Turmas":
             from pages.turmas import show_turmas
             show_turmas()
         
