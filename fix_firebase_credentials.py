@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""
+ """
 Script para verificar e corrigir credenciais Firebase
 """
 import json

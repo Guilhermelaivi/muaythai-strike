@@ -220,7 +220,7 @@ def main():
                     "💰 Pagamentos", 
                     "✅ Presenças", 
                     "🥋 Graduações", 
-                    "📋 Planos"
+                    "🥋 Turmas"
                 ]
             )
         log_step("Construção da sidebar e navegação", step_start)
@@ -247,9 +247,9 @@ def main():
         elif page == "🥋 Graduações":
             from pages.graduacoes import show_graduacoes
             show_graduacoes()
-        elif page == "📋 Planos":
-            from pages.planos import show_planos
-            show_planos()
+        elif page == "🥋 Turmas":
+            from pages.turmas import show_turmas
+            show_turmas()
         
         log_step(f"Carregamento da página: {page}", step_start)
         

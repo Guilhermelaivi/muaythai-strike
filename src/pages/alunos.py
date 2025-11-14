@@ -9,6 +9,7 @@ from datetime import date, datetime
 from typing import Dict, Any, List
 from src.services.alunos_service import AlunosService
 from src.services.graduacoes_service import GraduacoesService
+from src.services.turmas_service import TurmasService
 
 def show_alunos():
     """Exibe a página de gerenciamento de alunos"""
@@ -438,7 +439,40 @@ def _mostrar_formulario_novo_aluno(alunos_service: AlunosService):
             endereco = st.text_input("🏠 Endereço", placeholder="Rua, número, bairro")
         
         with col2:
-            turma = st.text_input("🥋 Turma", placeholder="Ex: Iniciantes, Avançados")
+            # Buscar turmas do banco de dados
+            try:
+                if 'turmas_service' not in st.session_state:
+                    st.session_state.turmas_service = TurmasService()
+                
+                turmas_service = st.session_state.turmas_service
+                turmas_db = turmas_service.listar_turmas(apenas_ativas=True)
+                
+                if turmas_db:
+                    # Usar turmas do banco
+                    turmas_opcoes = [f"{t['nome']} ({t['horarioInicio']} às {t['horarioFim']})" for t in turmas_db]
+                    turmas_nomes = [t['nome'] for t in turmas_db]
+                else:
+                    # Fallback se não houver turmas cadastradas
+                    turmas_opcoes = ["⚠️ Nenhuma turma cadastrada"]
+                    turmas_nomes = []
+                    st.warning("⚠️ Nenhuma turma cadastrada. Por favor, cadastre turmas primeiro na página de Turmas.")
+                
+            except Exception as e:
+                st.error(f"Erro ao carregar turmas: {str(e)}")
+                turmas_opcoes = ["⚠️ Erro ao carregar turmas"]
+                turmas_nomes = []
+            
+            if turmas_nomes:
+                turma_selecionada_idx = st.selectbox(
+                    "🥋 Turma *", 
+                    options=range(len(turmas_opcoes)),
+                    format_func=lambda x: turmas_opcoes[x],
+                    index=0,
+                    help="Selecione a turma do aluno"
+                )
+                turma = turmas_nomes[turma_selecionada_idx]
+            else:
+                turma = None
         
         # Botões
         st.markdown("---")
@@ -458,12 +492,17 @@ def _mostrar_formulario_novo_aluno(alunos_service: AlunosService):
                 st.error("❌ Nome é obrigatório!")
                 return
             
+            if not turma or not turma.strip():
+                st.error("❌ Turma é obrigatória!")
+                return
+            
             # Preparar dados
             dados_aluno = {
                 'nome': nome.strip(),
                 'status': status,
                 'vencimentoDia': vencimento_dia,
-                'ativoDesde': ativo_desde.strftime('%Y-%m-%d')
+                'ativoDesde': ativo_desde.strftime('%Y-%m-%d'),
+                'turma': turma.strip()
             }
             
             # Adicionar contato se preenchido
@@ -479,9 +518,6 @@ def _mostrar_formulario_novo_aluno(alunos_service: AlunosService):
             # Adicionar dados opcionais
             if endereco and endereco.strip():
                 dados_aluno['endereco'] = endereco.strip()
-            
-            if turma and turma.strip():
-                dados_aluno['turma'] = turma.strip()
             
             # Cadastrar aluno
             try:
@@ -821,11 +857,48 @@ def _mostrar_formulario_editar_aluno(alunos_service: AlunosService):
                 )
             
             with col2:
-                turma = st.text_input(
-                    "🥋 Turma", 
-                    value=aluno.get('turma', ''),
-                    placeholder="Ex: Iniciantes, Avançados"
-                )
+                # Buscar turmas do banco de dados
+                try:
+                    if 'turmas_service' not in st.session_state:
+                        st.session_state.turmas_service = TurmasService()
+                    
+                    turmas_service = st.session_state.turmas_service
+                    turmas_db = turmas_service.listar_turmas(apenas_ativas=True)
+                    
+                    if turmas_db:
+                        # Usar turmas do banco
+                        turmas_opcoes = [f"{t['nome']} ({t['horarioInicio']} às {t['horarioFim']})" for t in turmas_db]
+                        turmas_nomes = [t['nome'] for t in turmas_db]
+                    else:
+                        # Fallback se não houver turmas cadastradas
+                        turmas_opcoes = ["⚠️ Nenhuma turma cadastrada"]
+                        turmas_nomes = []
+                        st.warning("⚠️ Nenhuma turma cadastrada. Por favor, cadastre turmas primeiro na página de Turmas.")
+                    
+                except Exception as e:
+                    st.error(f"Erro ao carregar turmas: {str(e)}")
+                    turmas_opcoes = ["⚠️ Erro ao carregar turmas"]
+                    turmas_nomes = []
+                
+                # Definir índice da turma atual do aluno
+                turma_atual = aluno.get('turma', '')
+                if turmas_nomes and turma_atual in turmas_nomes:
+                    turma_index = turmas_nomes.index(turma_atual)
+                else:
+                    turma_index = 0
+                
+                if turmas_nomes:
+                    turma_selecionada_idx = st.selectbox(
+                        "🥋 Turma *", 
+                        options=range(len(turmas_opcoes)),
+                        format_func=lambda x: turmas_opcoes[x],
+                        index=turma_index,
+                        help="Selecione a turma do aluno",
+                        key="editar_turma_select"
+                    )
+                    turma = turmas_nomes[turma_selecionada_idx]
+                else:
+                    turma = turma_atual
             
             # Informações adicionais para status inativo
             if status == 'inativo':
