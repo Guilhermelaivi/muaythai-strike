@@ -85,67 +85,86 @@ def _mostrar_lista_alunos(alunos_service: AlunosService):
     
     graduacoes_service = st.session_state.graduacoes_service
     
-    # Filtros
-    col1, col2, col3, col4 = st.columns(4)
+    # Buscar turmas disponíveis primeiro (para definir opções antes dos filtros)
+    try:
+        todos_alunos = alunos_service.listar_alunos()
+        turmas_disponiveis = sorted(list(set([a.get('turma', '') for a in todos_alunos if a.get('turma')])))
+        # Reorganizar: turmas específicas primeiro, "Todas" por último
+        turmas_opcoes = turmas_disponiveis + ["Todas"]
+    except:
+        turmas_opcoes = ["KIDS", "Todas"]
     
     # Inicializar estado dos filtros se não existir
+    if 'filtro_turma_alunos' not in st.session_state:
+        # Definir KIDS como padrão se existir, senão primeira turma
+        if "KIDS" in turmas_opcoes:
+            st.session_state.filtro_turma_alunos = turmas_opcoes.index("KIDS")
+        else:
+            st.session_state.filtro_turma_alunos = 0
+    
     if 'filtro_status_alunos' not in st.session_state:
         st.session_state.filtro_status_alunos = 0
-    if 'filtro_turma_alunos' not in st.session_state:
-        st.session_state.filtro_turma_alunos = 0
     if 'filtro_vencimento_alunos' not in st.session_state:
         st.session_state.filtro_vencimento_alunos = 0
     if 'ordenar_por_alunos' not in st.session_state:
         st.session_state.ordenar_por_alunos = 0
     
-    with col1:
-        filtro_status = st.selectbox(
-            "🎯 Status:",
-            options=["Todos", "Ativo", "Inativo"],
-            index=st.session_state.filtro_status_alunos,
-            key="select_status_alunos"
-        )
-        st.session_state.filtro_status_alunos = ["Todos", "Ativo", "Inativo"].index(filtro_status)
+    # Buscar vencimentos disponíveis
+    try:
+        vencimentos_disponiveis = sorted(list(set([a.get('vencimentoDia') for a in todos_alunos if a.get('vencimentoDia')])))
+        vencimentos_opcoes = ["Todos"] + [str(v) for v in vencimentos_disponiveis]
+    except:
+        vencimentos_opcoes = ["Todos"]
     
-    with col2:
-        # Buscar turmas disponíveis
-        try:
-            todos_alunos = alunos_service.listar_alunos()
-            turmas_disponiveis = sorted(list(set([a.get('turma', '') for a in todos_alunos if a.get('turma')])))
-            turmas_opcoes = ["Todas"] + turmas_disponiveis
-        except:
-            turmas_opcoes = ["Todas"]
-        
+    # Filtros
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        # Turma como primeiro filtro (mais importante para performance)
+        filtro_turma_idx = st.session_state.filtro_turma_alunos
         filtro_turma = st.selectbox(
             "👥 Turma:",
             options=turmas_opcoes,
-            index=st.session_state.filtro_turma_alunos,
-            key="select_turma_alunos"
+            index=filtro_turma_idx,
+            help="Filtre por turma específica para melhor performance. 'Todas' carrega todos os alunos."
         )
-        st.session_state.filtro_turma_alunos = turmas_opcoes.index(filtro_turma)
+        # Atualizar session_state apenas se mudou
+        novo_idx = turmas_opcoes.index(filtro_turma)
+        if novo_idx != st.session_state.filtro_turma_alunos:
+            st.session_state.filtro_turma_alunos = novo_idx
+    
+    with col2:
+        status_opcoes = ["Todos", "Ativo", "Inativo"]
+        filtro_status_idx = st.session_state.filtro_status_alunos
+        filtro_status = st.selectbox(
+            "🎯 Status:",
+            options=status_opcoes,
+            index=filtro_status_idx
+        )
+        # Atualizar session_state apenas se mudou
+        novo_idx = status_opcoes.index(filtro_status)
+        if novo_idx != st.session_state.filtro_status_alunos:
+            st.session_state.filtro_status_alunos = novo_idx
     
     with col3:
-        # Buscar vencimentos disponíveis
-        try:
-            vencimentos_disponiveis = sorted(list(set([a.get('vencimentoDia') for a in todos_alunos if a.get('vencimentoDia')])))
-            vencimentos_opcoes = ["Todos"] + [str(v) for v in vencimentos_disponiveis]
-        except:
-            vencimentos_opcoes = ["Todos"]
-        
+        filtro_vencimento_idx = st.session_state.filtro_vencimento_alunos
         filtro_vencimento = st.selectbox(
             "📅 Vencimento:",
             options=vencimentos_opcoes,
-            index=st.session_state.filtro_vencimento_alunos,
-            key="select_vencimento_alunos"
+            index=filtro_vencimento_idx
         )
-        st.session_state.filtro_vencimento_alunos = vencimentos_opcoes.index(filtro_vencimento)
+        # Atualizar session_state apenas se mudou
+        novo_idx = vencimentos_opcoes.index(filtro_vencimento)
+        if novo_idx != st.session_state.filtro_vencimento_alunos:
+            st.session_state.filtro_vencimento_alunos = novo_idx
     
     with col4:
+        ordenar_opcoes = ["nome", "status", "vencimentoDia", "ativoDesde", "turma"]
+        ordenar_idx = st.session_state.ordenar_por_alunos
         ordenar_por = st.selectbox(
             "📊 Ordenar:",
-            options=["nome", "status", "vencimentoDia", "ativoDesde", "turma"],
-            index=st.session_state.ordenar_por_alunos,
-            key="select_ordenar_alunos",
+            options=ordenar_opcoes,
+            index=ordenar_idx,
             format_func=lambda x: {
                 "nome": "Nome",
                 "status": "Status",
@@ -154,28 +173,48 @@ def _mostrar_lista_alunos(alunos_service: AlunosService):
                 "turma": "Turma"
             }.get(x, x)
         )
-        st.session_state.ordenar_por_alunos = ["nome", "status", "vencimentoDia", "ativoDesde", "turma"].index(ordenar_por)
+        # Atualizar session_state apenas se mudou
+        novo_idx = ordenar_opcoes.index(ordenar_por)
+        if novo_idx != st.session_state.ordenar_por_alunos:
+            st.session_state.ordenar_por_alunos = novo_idx
     
     # Botão Limpar Filtros
     col_btn1, col_btn2, col_btn3 = st.columns([1, 1, 4])
     with col_btn1:
         if st.button("🔄 Limpar Filtros", use_container_width=True):
+            # Resetar todos os filtros para valores padrão
+            # TURMA -> KIDS (se existir, senão primeira opção)
+            if "KIDS" in turmas_opcoes:
+                st.session_state.filtro_turma_alunos = turmas_opcoes.index("KIDS")
+            else:
+                st.session_state.filtro_turma_alunos = 0
+            
+            # STATUS -> Todos (índice 0 em ["Todos", "Ativo", "Inativo"])
             st.session_state.filtro_status_alunos = 0
-            st.session_state.filtro_turma_alunos = 0
+            
+            # VENCIMENTO -> Todos (índice 0 em ["Todos", ...])
             st.session_state.filtro_vencimento_alunos = 0
+            
+            # ORDENAR -> nome (índice 0 em ["nome", "status", "vencimentoDia", "ativoDesde", "turma"])
             st.session_state.ordenar_por_alunos = 0
+            
             st.rerun()
     
     st.markdown("---")
     
-    # Carregar e filtrar alunos
+    # Carregar e filtrar alunos - OTIMIZADO
     try:
-        status_filtro = None if filtro_status == "Todos" else filtro_status.lower()
-        alunos = alunos_service.listar_alunos(status=status_filtro, ordenar_por=ordenar_por)
-        
-        # Aplicar filtro de turma
+        # Se uma turma específica foi selecionada (não "Todas"), carregar apenas essa turma
         if filtro_turma != "Todas":
+            # Carregar todos os alunos primeiro (necessário para o filtro por turma)
+            status_filtro = None if filtro_status == "Todos" else filtro_status.lower()
+            alunos = alunos_service.listar_alunos(status=status_filtro, ordenar_por=ordenar_por)
+            # Filtrar por turma específica
             alunos = [a for a in alunos if a.get('turma') == filtro_turma]
+        else:
+            # Carregar todos os alunos
+            status_filtro = None if filtro_status == "Todos" else filtro_status.lower()
+            alunos = alunos_service.listar_alunos(status=status_filtro, ordenar_por=ordenar_por)
         
         # Aplicar filtro de vencimento
         if filtro_vencimento != "Todos":
@@ -183,8 +222,15 @@ def _mostrar_lista_alunos(alunos_service: AlunosService):
             alunos = [a for a in alunos if a.get('vencimentoDia') == vencimento_num]
         
         if not alunos:
-            st.info("📭 Nenhum aluno encontrado. Cadastre o primeiro aluno!")
+            st.info(f"📭 Nenhum aluno encontrado na turma **{filtro_turma}**.")
             return
+        
+        # Mostrar informação de quantos alunos foram carregados
+        total_alunos = len(alunos)
+        if filtro_turma != "Todas":
+            st.info(f"👥 **{total_alunos}** aluno(s) encontrado(s) na turma **{filtro_turma}**")
+        else:
+            st.info(f"👥 **{total_alunos}** aluno(s) no total (todas as turmas)")
         
         # Preparar dados para exibição
         dados_tabela = []
@@ -358,11 +404,21 @@ def _mostrar_formulario_novo_aluno(alunos_service: AlunosService):
         
         with col1:
             nome = st.text_input("👤 Nome Completo *", placeholder="Digite o nome completo")
-            vencimento_dia = st.number_input("📅 Dia do Vencimento *", min_value=1, max_value=28, value=15)
+            vencimento_dia = st.selectbox(
+                "📅 Dia do Vencimento *", 
+                options=[10, 15, 25],
+                index=1  # 15 como padrão
+            )
         
         with col2:
             status = st.selectbox("📊 Status *", options=["ativo", "inativo"], index=0)
-            ativo_desde = st.date_input("📆 Ativo Desde *", value=date.today())
+            ativo_desde = st.date_input(
+                "📆 Ativo Desde *", 
+                value=date.today(),
+                min_value=date(2024, 1, 1),
+                max_value=date.today(),
+                help="Data de início na academia (entre 01/01/2024 e hoje)"
+            )
         
         # Contato
         st.markdown("#### 📞 Contato")
@@ -690,11 +746,21 @@ def _mostrar_formulario_editar_aluno(alunos_service: AlunosService):
                     value=aluno.get('nome', ''),
                     placeholder="Digite o nome completo"
                 )
-                vencimento_dia = st.number_input(
+                # Normalizar vencimento para valores válidos (10, 15, 25)
+                venc_atual = int(aluno.get('vencimentoDia', 15))
+                if venc_atual not in [10, 15, 25]:
+                    # Converter valores inválidos para o mais próximo
+                    if venc_atual < 13:
+                        venc_atual = 10
+                    elif venc_atual < 20:
+                        venc_atual = 15
+                    else:
+                        venc_atual = 25
+                
+                vencimento_dia = st.selectbox(
                     "📅 Dia do Vencimento *", 
-                    min_value=1, 
-                    max_value=28, 
-                    value=int(aluno.get('vencimentoDia', 15))
+                    options=[10, 15, 25],
+                    index=[10, 15, 25].index(venc_atual)
                 )
             
             with col2:
@@ -713,7 +779,13 @@ def _mostrar_formulario_editar_aluno(alunos_service: AlunosService):
                 else:
                     ativo_desde_date = date.today()
                 
-                ativo_desde = st.date_input("📆 Ativo Desde *", value=ativo_desde_date)
+                ativo_desde = st.date_input(
+                    "📆 Ativo Desde *", 
+                    value=ativo_desde_date,
+                    min_value=date(2024, 1, 1),
+                    max_value=date.today(),
+                    help="Data de início na academia (entre 01/01/2024 e hoje)"
+                )
             
             # Contato
             st.markdown("#### 📞 Contato")
