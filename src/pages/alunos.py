@@ -522,6 +522,10 @@ def _mostrar_formulario_novo_aluno(alunos_service: AlunosService):
             else:
                 turma = None
         
+        # Campo de observações
+        st.markdown("#### 📝 Observações")
+        observacoes = st.text_area("💬 Observações", placeholder="Informações adicionais sobre o aluno...", height=100, help="Campo opcional para anotações")
+        
         # Botões
         st.markdown("---")
         col1, col2, col3 = st.columns([1, 1, 2])
@@ -581,6 +585,10 @@ def _mostrar_formulario_novo_aluno(alunos_service: AlunosService):
             # Adicionar dados opcionais
             if endereco and endereco.strip():
                 dados_aluno['endereco'] = endereco.strip()
+            
+            # Adicionar observações
+            if observacoes and observacoes.strip():
+                dados_aluno['observacoes'] = observacoes.strip()
             
             # Adicionar dados do responsável se preenchido
             if st.session_state.possui_responsavel_novo:
@@ -814,6 +822,12 @@ def _mostrar_detalhes_aluno(alunos_service: AlunosService, aluno_id: str):
                 st.write(f"**RG:** {responsavel.get('rg', 'N/A')}")
                 st.write(f"**Telefone:** {responsavel.get('telefone', 'N/A')}")
         
+        # Observações
+        observacoes = aluno.get('observacoes', '')
+        if observacoes and observacoes.strip():
+            st.markdown("#### 📝 Observações")
+            st.info(observacoes)
+        
         # Timestamps
         if aluno.get('createdAt') or aluno.get('updatedAt'):
             st.markdown("#### 🕒 Timestamps")
@@ -857,24 +871,31 @@ def _mostrar_formulario_editar_aluno(alunos_service: AlunosService):
             if st.button("🔙 Voltar para Lista", type="secondary"):
                 st.session_state.alunos_modo = 'lista'
                 del st.session_state.aluno_editando
+                # Limpar estado do checkbox
+                chave_estado = f'possui_responsavel_edit_{aluno_id}'
+                if chave_estado in st.session_state:
+                    del st.session_state[chave_estado]
                 st.rerun()
         
         # Checkbox de responsável FORA do form para funcionar dinamicamente
         st.markdown("#### 👨‍👩‍👧‍👦 Responsável Legal")
         responsavel_atual = aluno.get('responsavel', {})
         
-        if 'possui_responsavel_edit' not in st.session_state:
-            st.session_state.possui_responsavel_edit = bool(responsavel_atual)
+        # Inicializar estado baseado no aluno atual
+        # Usa o ID do aluno como chave para evitar conflito entre diferentes alunos
+        chave_estado = f'possui_responsavel_edit_{aluno_id}'
+        if chave_estado not in st.session_state:
+            st.session_state[chave_estado] = bool(responsavel_atual and isinstance(responsavel_atual, dict))
         
         possui_responsavel = st.checkbox(
             "📋 Aluno é menor de idade e possui responsável legal",
-            value=st.session_state.possui_responsavel_edit,
+            value=st.session_state[chave_estado],
             help="Marque se o aluno tiver menos de 18 anos",
             key=f"check_responsavel_edit_{aluno_id}"
         )
         
-        if possui_responsavel != st.session_state.possui_responsavel_edit:
-            st.session_state.possui_responsavel_edit = possui_responsavel
+        if possui_responsavel != st.session_state[chave_estado]:
+            st.session_state[chave_estado] = possui_responsavel
             st.rerun()
         
         st.markdown("---")
@@ -954,7 +975,8 @@ def _mostrar_formulario_editar_aluno(alunos_service: AlunosService):
                 )
             
             # Campos do responsável aparecem SE o checkbox estiver marcado
-            if st.session_state.possui_responsavel_edit:
+            chave_estado = f'possui_responsavel_edit_{aluno_id}'
+            if st.session_state.get(chave_estado, False):
                 st.markdown("#### 👤 Dados do Responsável Legal")
                 responsavel_atual = aluno.get('responsavel', {})
                 if not isinstance(responsavel_atual, dict):
@@ -1050,6 +1072,10 @@ def _mostrar_formulario_editar_aluno(alunos_service: AlunosService):
                 else:
                     turma = turma_atual
             
+            # Campo de observações
+            st.markdown("#### 📝 Observações")
+            observacoes = st.text_area("💬 Observações", value=aluno.get('observacoes', ''), placeholder="Informações adicionais sobre o aluno...", height=100, help="Campo opcional para anotações", key="editar_observacoes")
+            
             # Informações adicionais para status inativo
             if status == 'inativo':
                 st.markdown("#### ⏸️ Dados de Inativação")
@@ -1083,7 +1109,8 @@ def _mostrar_formulario_editar_aluno(alunos_service: AlunosService):
                     return
                 
                 # Validar dados do responsável se marcado
-                if st.session_state.possui_responsavel_edit:
+                chave_estado = f'possui_responsavel_edit_{aluno_id}'
+                if st.session_state.get(chave_estado, False):
                     if not responsavel_nome or not responsavel_nome.strip():
                         st.error("❌ Nome do responsável é obrigatório!")
                         return
@@ -1122,8 +1149,15 @@ def _mostrar_formulario_editar_aluno(alunos_service: AlunosService):
                 if turma and turma.strip():
                     dados_atualizacao['turma'] = turma.strip()
                 
+                # Adicionar observações
+                if observacoes and observacoes.strip():
+                    dados_atualizacao['observacoes'] = observacoes.strip()
+                else:
+                    dados_atualizacao['observacoes'] = None
+                
                 # Adicionar ou remover dados do responsável
-                if st.session_state.possui_responsavel_edit:
+                chave_estado = f'possui_responsavel_edit_{aluno_id}'
+                if st.session_state.get(chave_estado, False):
                     dados_atualizacao['responsavel'] = {
                         'nome': responsavel_nome.strip(),
                         'cpf': responsavel_cpf.strip(),
@@ -1147,23 +1181,14 @@ def _mostrar_formulario_editar_aluno(alunos_service: AlunosService):
                     
                     if sucesso:
                         st.success(f"✅ Aluno **{nome}** atualizado com sucesso!")
-                        
-                        # Opções pós-edição
-                        col1, col2, col3 = st.columns(3)
-                        
-                        with col1:
-                            if st.button("📋 Voltar para Lista", type="secondary"):
-                                st.session_state.alunos_modo = 'lista'
-                                del st.session_state.aluno_editando
-                                st.rerun()
-                        
-                        with col2:
-                            if st.button("👁️ Ver Detalhes", type="secondary"):
-                                _mostrar_detalhes_aluno(alunos_service, aluno_id)
-                        
-                        with col3:
-                            if st.button("✏️ Continuar Editando", type="secondary"):
-                                st.rerun()
+                        # Limpar cache para forçar recarregamento
+                        st.cache_data.clear()
+                        # Limpar estado do checkbox
+                        chave_estado = f'possui_responsavel_edit_{aluno_id}'
+                        if chave_estado in st.session_state:
+                            del st.session_state[chave_estado]
+                        st.session_state.aluno_atualizado = True
+                        st.rerun()
                         
                 except Exception as e:
                     st.error(f"❌ Erro ao atualizar aluno: {str(e)}")

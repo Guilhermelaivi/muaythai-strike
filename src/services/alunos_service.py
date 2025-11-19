@@ -81,6 +81,15 @@ class AlunosService:
             if plano_id and plano_id.strip():
                 aluno_data['planoId'] = plano_id.strip()
             
+            # Adicionar observações se especificado (quando dados vêm como dict)
+            if isinstance(dados_aluno_ou_nome, dict):
+                if 'observacoes' in dados_aluno_ou_nome and dados_aluno_ou_nome['observacoes']:
+                    aluno_data['observacoes'] = dados_aluno_ou_nome['observacoes'].strip()
+                
+                # Adicionar responsável legal se especificado
+                if 'responsavel' in dados_aluno_ou_nome and dados_aluno_ou_nome['responsavel']:
+                    aluno_data['responsavel'] = dados_aluno_ou_nome['responsavel']
+            
             # Criar documento no Firestore
             doc_ref = self.collection.add(aluno_data)[1]
             
@@ -359,7 +368,8 @@ class AlunosService:
         """Prepara dados para atualização (remove campos não permitidos)"""
         campos_permitidos = [
             'nome', 'contato', 'endereco', 'status', 'vencimentoDia',
-            'turma', 'ativoDesde', 'inativoDesde', 'ultimoPagamentoYm'
+            'turma', 'ativoDesde', 'inativoDesde', 'ultimoPagamentoYm',
+            'observacoes', 'responsavel'  # Adicionados campos de observações e responsável legal
         ]
         
         return {k: v for k, v in dados.items() if k in campos_permitidos}
