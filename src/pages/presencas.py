@@ -101,7 +101,8 @@ def exibir_gestao_ausencias():
     for aluno in alunos_ordenados:
         presenca = presencas_service.buscar_presenca_por_aluno_data(aluno.get('id'), data_selecionada)
         presencas_por_aluno[aluno.get('id')] = presenca
-        if presenca and presenca.get('status') == 'AUSENTE':
+        # presente=False significa AUSENTE
+        if presenca and presenca.get('presente') == False:
             ausencias_registradas.add(aluno.get('id'))
     
     # Inicializar ausências selecionadas com as já registradas
