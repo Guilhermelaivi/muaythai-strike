@@ -361,10 +361,6 @@ def _mostrar_lista_alunos(alunos_service: AlunosService):
             with col3:
                 if st.button("👁️ Detalhes", use_container_width=True):
                     _mostrar_detalhes_aluno(alunos_service, aluno_selecionado['ID'])
-            
-            with col4:
-                if st.button("🎓 Graduações", use_container_width=True):
-                    st.info("🚧 Graduações em desenvolvimento...")
         
         # Resumo
         st.markdown("---")
@@ -398,6 +394,24 @@ def _mostrar_formulario_novo_aluno(alunos_service: AlunosService):
         
         st.markdown("---")
     
+    # Checkbox de responsável FORA do form para funcionar dinamicamente
+    st.markdown("#### 👨‍👩‍👧‍👦 Responsável Legal")
+    if 'possui_responsavel_novo' not in st.session_state:
+        st.session_state.possui_responsavel_novo = False
+    
+    possui_responsavel = st.checkbox(
+        "📋 Aluno é menor de idade e possui responsável legal",
+        value=st.session_state.possui_responsavel_novo,
+        help="Marque se o aluno tiver menos de 18 anos",
+        key="check_responsavel_novo"
+    )
+    
+    if possui_responsavel != st.session_state.possui_responsavel_novo:
+        st.session_state.possui_responsavel_novo = possui_responsavel
+        st.rerun()
+    
+    st.markdown("---")
+    
     with st.form("form_novo_aluno", clear_on_submit=True):
         # Dados básicos
         st.markdown("#### 📝 Dados Básicos")
@@ -430,6 +444,40 @@ def _mostrar_formulario_novo_aluno(alunos_service: AlunosService):
         
         with col2:
             email = st.text_input("📧 Email", placeholder="aluno@email.com")
+        
+        # Campos do responsável aparecem SE o checkbox estiver marcado
+        if st.session_state.possui_responsavel_novo:
+            st.markdown("#### 👤 Dados do Responsável Legal")
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                responsavel_nome = st.text_input(
+                    "👤 Nome Completo do Responsável *",
+                    placeholder="Digite o nome completo",
+                    key="resp_nome_novo"
+                )
+                responsavel_cpf = st.text_input(
+                    "🆔 CPF do Responsável *",
+                    placeholder="000.000.000-00",
+                    key="resp_cpf_novo"
+                )
+            
+            with col2:
+                responsavel_rg = st.text_input(
+                    "🪪 RG do Responsável *",
+                    placeholder="00.000.000-0",
+                    key="resp_rg_novo"
+                )
+                responsavel_telefone = st.text_input(
+                    "📱 Telefone do Responsável *",
+                    placeholder="(11) 99999-9999",
+                    key="resp_tel_novo"
+                )
+        else:
+            responsavel_nome = None
+            responsavel_cpf = None
+            responsavel_rg = None
+            responsavel_telefone = None
         
         # Outros dados
         st.markdown("#### 🏠 Dados Adicionais")
@@ -496,6 +544,21 @@ def _mostrar_formulario_novo_aluno(alunos_service: AlunosService):
                 st.error("❌ Turma é obrigatória!")
                 return
             
+            # Validar dados do responsável se marcado
+            if st.session_state.possui_responsavel_novo:
+                if not responsavel_nome or not responsavel_nome.strip():
+                    st.error("❌ Nome do responsável é obrigatório!")
+                    return
+                if not responsavel_cpf or not responsavel_cpf.strip():
+                    st.error("❌ CPF do responsável é obrigatório!")
+                    return
+                if not responsavel_rg or not responsavel_rg.strip():
+                    st.error("❌ RG do responsável é obrigatório!")
+                    return
+                if not responsavel_telefone or not responsavel_telefone.strip():
+                    st.error("❌ Telefone do responsável é obrigatório!")
+                    return
+            
             # Preparar dados
             dados_aluno = {
                 'nome': nome.strip(),
@@ -519,6 +582,15 @@ def _mostrar_formulario_novo_aluno(alunos_service: AlunosService):
             if endereco and endereco.strip():
                 dados_aluno['endereco'] = endereco.strip()
             
+            # Adicionar dados do responsável se preenchido
+            if st.session_state.possui_responsavel_novo:
+                dados_aluno['responsavel'] = {
+                    'nome': responsavel_nome.strip(),
+                    'cpf': responsavel_cpf.strip(),
+                    'rg': responsavel_rg.strip(),
+                    'telefone': responsavel_telefone.strip()
+                }
+            
             # Cadastrar aluno
             try:
                 aluno_id = alunos_service.criar_aluno(dados_aluno)
@@ -526,6 +598,8 @@ def _mostrar_formulario_novo_aluno(alunos_service: AlunosService):
                     'nome': nome,
                     'id': aluno_id
                 }
+                # Limpar checkbox ao cadastrar
+                st.session_state.possui_responsavel_novo = False
                 st.rerun()
                     
             except Exception as e:
@@ -726,6 +800,20 @@ def _mostrar_detalhes_aluno(alunos_service: AlunosService, aluno_id: str):
             if aluno.get('ultimoPagamentoYm'):
                 st.write(f"**Último Pagamento:** {aluno.get('ultimoPagamentoYm')}")
         
+        # Dados do responsável (se houver)
+        responsavel = aluno.get('responsavel', {})
+        if responsavel and isinstance(responsavel, dict):
+            st.markdown("#### 👨‍👩‍👧‍👦 Responsável Legal")
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.write(f"**Nome:** {responsavel.get('nome', 'N/A')}")
+                st.write(f"**CPF:** {responsavel.get('cpf', 'N/A')}")
+            
+            with col2:
+                st.write(f"**RG:** {responsavel.get('rg', 'N/A')}")
+                st.write(f"**Telefone:** {responsavel.get('telefone', 'N/A')}")
+        
         # Timestamps
         if aluno.get('createdAt') or aluno.get('updatedAt'):
             st.markdown("#### 🕒 Timestamps")
@@ -770,6 +858,26 @@ def _mostrar_formulario_editar_aluno(alunos_service: AlunosService):
                 st.session_state.alunos_modo = 'lista'
                 del st.session_state.aluno_editando
                 st.rerun()
+        
+        # Checkbox de responsável FORA do form para funcionar dinamicamente
+        st.markdown("#### 👨‍👩‍👧‍👦 Responsável Legal")
+        responsavel_atual = aluno.get('responsavel', {})
+        
+        if 'possui_responsavel_edit' not in st.session_state:
+            st.session_state.possui_responsavel_edit = bool(responsavel_atual)
+        
+        possui_responsavel = st.checkbox(
+            "📋 Aluno é menor de idade e possui responsável legal",
+            value=st.session_state.possui_responsavel_edit,
+            help="Marque se o aluno tiver menos de 18 anos",
+            key=f"check_responsavel_edit_{aluno_id}"
+        )
+        
+        if possui_responsavel != st.session_state.possui_responsavel_edit:
+            st.session_state.possui_responsavel_edit = possui_responsavel
+            st.rerun()
+        
+        st.markdown("---")
         
         with st.form("form_editar_aluno", clear_on_submit=False):
             # Dados básicos
@@ -844,6 +952,48 @@ def _mostrar_formulario_editar_aluno(alunos_service: AlunosService):
                     value=contato_atual.get('email', ''),
                     placeholder="aluno@email.com"
                 )
+            
+            # Campos do responsável aparecem SE o checkbox estiver marcado
+            if st.session_state.possui_responsavel_edit:
+                st.markdown("#### 👤 Dados do Responsável Legal")
+                responsavel_atual = aluno.get('responsavel', {})
+                if not isinstance(responsavel_atual, dict):
+                    responsavel_atual = {}
+                
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    responsavel_nome = st.text_input(
+                        "👤 Nome Completo do Responsável *",
+                        value=responsavel_atual.get('nome', ''),
+                        placeholder="Digite o nome completo",
+                        key="resp_nome_edit"
+                    )
+                    responsavel_cpf = st.text_input(
+                        "🆔 CPF do Responsável *",
+                        value=responsavel_atual.get('cpf', ''),
+                        placeholder="000.000.000-00",
+                        key="resp_cpf_edit"
+                    )
+                
+                with col2:
+                    responsavel_rg = st.text_input(
+                        "🪪 RG do Responsável *",
+                        value=responsavel_atual.get('rg', ''),
+                        placeholder="00.000.000-0",
+                        key="resp_rg_edit"
+                    )
+                    responsavel_telefone = st.text_input(
+                        "📱 Telefone do Responsável *",
+                        value=responsavel_atual.get('telefone', ''),
+                        placeholder="(11) 99999-9999",
+                        key="resp_tel_edit"
+                    )
+            else:
+                responsavel_nome = None
+                responsavel_cpf = None
+                responsavel_rg = None
+                responsavel_telefone = None
             
             # Outros dados
             st.markdown("#### 🏠 Dados Adicionais")
@@ -932,6 +1082,21 @@ def _mostrar_formulario_editar_aluno(alunos_service: AlunosService):
                     st.error("❌ Nome é obrigatório!")
                     return
                 
+                # Validar dados do responsável se marcado
+                if st.session_state.possui_responsavel_edit:
+                    if not responsavel_nome or not responsavel_nome.strip():
+                        st.error("❌ Nome do responsável é obrigatório!")
+                        return
+                    if not responsavel_cpf or not responsavel_cpf.strip():
+                        st.error("❌ CPF do responsável é obrigatório!")
+                        return
+                    if not responsavel_rg or not responsavel_rg.strip():
+                        st.error("❌ RG do responsável é obrigatório!")
+                        return
+                    if not responsavel_telefone or not responsavel_telefone.strip():
+                        st.error("❌ Telefone do responsável é obrigatório!")
+                        return
+                
                 # Preparar dados de atualização
                 dados_atualizacao = {
                     'nome': nome.strip(),
@@ -956,6 +1121,18 @@ def _mostrar_formulario_editar_aluno(alunos_service: AlunosService):
                 
                 if turma and turma.strip():
                     dados_atualizacao['turma'] = turma.strip()
+                
+                # Adicionar ou remover dados do responsável
+                if st.session_state.possui_responsavel_edit:
+                    dados_atualizacao['responsavel'] = {
+                        'nome': responsavel_nome.strip(),
+                        'cpf': responsavel_cpf.strip(),
+                        'rg': responsavel_rg.strip(),
+                        'telefone': responsavel_telefone.strip()
+                    }
+                else:
+                    # Se desmarcou, remover dados do responsável
+                    dados_atualizacao['responsavel'] = None
                 
                 # Adicionar data de inativação se necessário
                 if status == 'inativo':
@@ -1013,14 +1190,6 @@ def _mostrar_formulario_editar_aluno(alunos_service: AlunosService):
             if st.button("👁️ Ver Detalhes Completos", use_container_width=True):
                 with st.expander("📄 Detalhes Completos", expanded=True):
                     _mostrar_detalhes_aluno(alunos_service, aluno_id)
-        
-        with col3:
-            if st.button("🎓 Graduações", use_container_width=True):
-                st.info("🚧 Graduações em desenvolvimento...")
-        
-        with col4:
-            if st.button("💰 Pagamentos", use_container_width=True):
-                st.info("🚧 Pagamentos em desenvolvimento...")
         
     except Exception as e:
         st.error(f"❌ Erro ao carregar aluno para edição: {str(e)}")
