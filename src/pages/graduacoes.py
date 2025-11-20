@@ -136,9 +136,7 @@ def exibir_registrar_graduacao():
             dados_tabela.append({
                 "Nome": aluno.get('nome', 'N/A'),
                 "Graduação Atual": aluno.get('graduacao', 'Sem graduação'),
-                "Turma": aluno.get('turma', 'Sem turma'),
-                "Responsável": aluno.get('responsavel', 'N/A'),
-                "Contato": aluno.get('contato', 'N/A')
+                "Turma": aluno.get('turma', 'Sem turma')
             })
         
         if dados_tabela:
