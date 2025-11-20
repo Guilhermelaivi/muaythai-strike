@@ -200,29 +200,64 @@ def main():
     # Sidebar com navegação
     step_start = log_step("Construção da sidebar e navegação")
     try:
+        # Inicializar página padrão se não existir
+        if 'current_page' not in st.session_state:
+            st.session_state.current_page = "🏠 Dashboard"
+        
         with st.sidebar:
             st.markdown("### 📋 Navegação")
             
             # Logout
-            if st.button("🚪 Logout", type="secondary"):
+            if st.button("🚪 Logout", type="secondary", use_container_width=True):
                 logger.info("👤 Usuário fez logout")
                 auth_manager.logout()
                 st.rerun()
             
             st.divider()
             
-            # Menu de navegação
-            page = st.selectbox(
-                "Selecione uma página:",
-                options=[
-                    "🏠 Dashboard", 
-                    "👥 Alunos", 
-                    "💰 Pagamentos", 
-                    "✅ Presenças", 
-                    "🥋 Graduações", 
-                    "👨‍👩‍👧‍👦 Turmas"
-                ]
-            )
+            # Página principal - sempre visível
+            st.markdown("#### Principal")
+            if st.button("🏠 Dashboard", use_container_width=True, 
+                        type="primary" if st.session_state.current_page == "🏠 Dashboard" else "secondary"):
+                st.session_state.current_page = "🏠 Dashboard"
+                st.rerun()
+            
+            st.divider()
+            
+            # Páginas mais utilizadas
+            st.markdown("#### Mais Utilizados")
+            
+            if st.button("👥 Alunos", use_container_width=True,
+                        type="primary" if st.session_state.current_page == "👥 Alunos" else "secondary"):
+                st.session_state.current_page = "👥 Alunos"
+                st.rerun()
+            
+            if st.button("✅ Presenças", use_container_width=True,
+                        type="primary" if st.session_state.current_page == "✅ Presenças" else "secondary"):
+                st.session_state.current_page = "✅ Presenças"
+                st.rerun()
+            
+            if st.button("💰 Pagamentos", use_container_width=True,
+                        type="primary" if st.session_state.current_page == "💰 Pagamentos" else "secondary"):
+                st.session_state.current_page = "💰 Pagamentos"
+                st.rerun()
+            
+            st.divider()
+            
+            # Páginas auxiliares
+            st.markdown("#### Outros")
+            
+            if st.button("👨‍👩‍👧‍👦 Turmas", use_container_width=True,
+                        type="primary" if st.session_state.current_page == "👨‍👩‍👧‍👦 Turmas" else "secondary"):
+                st.session_state.current_page = "👨‍👩‍👧‍👦 Turmas"
+                st.rerun()
+            
+            if st.button("🥋 Graduações", use_container_width=True,
+                        type="primary" if st.session_state.current_page == "🥋 Graduações" else "secondary"):
+                st.session_state.current_page = "🥋 Graduações"
+                st.rerun()
+        
+        page = st.session_state.current_page
         log_step("Construção da sidebar e navegação", step_start)
     except Exception as e:
         logger.error(f"❌ ERRO ao construir sidebar: {str(e)}")

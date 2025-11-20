@@ -31,7 +31,7 @@ def show_alunos():
         st.session_state.alunos_modo = 'lista'
     
     # Menu de navegação
-    col1, col2, col3, col4 = st.columns([1, 1, 1, 1])
+    col1, col2, col3 = st.columns([1, 1, 1])
     
     with col1:
         if st.button("📋 Lista de Alunos", use_container_width=True, 
@@ -46,12 +46,6 @@ def show_alunos():
             st.rerun()
     
     with col3:
-        if st.button("� Buscar", use_container_width=True,
-                    type="primary" if st.session_state.alunos_modo == 'buscar' else "secondary"):
-            st.session_state.alunos_modo = 'buscar'
-            st.rerun()
-    
-    with col4:
         if st.button("📊 Estatísticas", use_container_width=True,
                     type="primary" if st.session_state.alunos_modo == 'stats' else "secondary"):
             st.session_state.alunos_modo = 'stats'
@@ -66,8 +60,6 @@ def show_alunos():
         _mostrar_formulario_novo_aluno(alunos_service)
     elif st.session_state.alunos_modo == 'editar':
         _mostrar_formulario_editar_aluno(alunos_service)
-    elif st.session_state.alunos_modo == 'buscar':
-        _mostrar_busca_alunos(alunos_service)
     elif st.session_state.alunos_modo == 'stats':
         _mostrar_estatisticas_alunos(alunos_service)
 
