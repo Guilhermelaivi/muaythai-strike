@@ -3,7 +3,7 @@ PagamentosService - Gerenciamento de pagamentos mensais
 Integração com Firestore para collection /pagamentos/{alunoId_YYYY_MM}
 """
 
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from typing import Dict, List, Optional, Any
 from google.cloud import firestore
 from google.cloud.firestore_v1.base_query import FieldFilter
@@ -12,10 +12,73 @@ from src.utils.firebase_config import get_firestore_client
 class PagamentosService:
     """Serviço para gerenciamento de pagamentos mensais"""
     
+    # Constantes para dias de vencimento válidos
+    VENCIMENTOS_VALIDOS = [10, 15, 25]
+    CARENCIA_PADRAO = 3  # Dias de carência para inadimplência
+    
+    # Mapeamento de vencimento para dia de cobrança (devedor)
+    DIAS_COBRANCA = {
+        10: 1,   # Vencimento dia 10 → entra como devedor dia 01
+        15: 5,   # Vencimento dia 15 → entra como devedor dia 05
+        25: 15   # Vencimento dia 25 → entra como devedor dia 15
+    }
+    
     def __init__(self):
         """Inicializa o serviço com conexão Firestore"""
         self.db = get_firestore_client()
         self.collection_name = 'pagamentos'
+    
+    def calcular_status_pagamento(self, ano: int, mes: int, data_vencimento: int = 15, 
+                                   carencia_dias: int = None, data_referencia: date = None) -> str:
+        """
+        Calcula o status de um pagamento baseado nas regras de negócio
+        
+        Regras:
+        - Devedor (a cobrar): Entra no dia de cobrança conforme vencimento
+          - Vencimento dia 10 → devedor a partir do dia 01
+          - Vencimento dia 15 → devedor a partir do dia 05
+          - Vencimento dia 25 → devedor a partir do dia 15
+        
+        - Inadimplente (em atraso): Após vencimento + carência
+          - Carência padrão: 3 dias
+        
+        Args:
+            ano: Ano do pagamento
+            mes: Mês do pagamento
+            data_vencimento: Dia do vencimento (10, 15 ou 25)
+            carencia_dias: Dias de carência (padrão: 3)
+            data_referencia: Data para cálculo (padrão: hoje)
+        
+        Returns:
+            str: Status calculado ('devedor', 'inadimplente' ou 'pendente')
+        """
+        if carencia_dias is None:
+            carencia_dias = self.CARENCIA_PADRAO
+        
+        if data_referencia is None:
+            data_referencia = date.today()
+        
+        # Validar vencimento
+        if data_vencimento not in self.VENCIMENTOS_VALIDOS:
+            data_vencimento = 15  # Usar padrão se inválido
+        
+        # Data do vencimento
+        data_venc = date(ano, mes, data_vencimento)
+        
+        # Data de início da cobrança (quando vira devedor)
+        dia_cobranca = self.DIAS_COBRANCA.get(data_vencimento, 5)
+        data_cobranca = date(ano, mes, dia_cobranca)
+        
+        # Data de inadimplência (vencimento + carência)
+        data_inadimplencia = data_venc + timedelta(days=carencia_dias)
+        
+        # Calcular status
+        if data_referencia >= data_inadimplencia:
+            return 'inadimplente'
+        elif data_referencia >= data_cobranca:
+            return 'devedor'
+        else:
+            return 'pendente'  # Ainda não entrou em cobrança
     
     def criar_pagamento(self, dados_pagamento: Dict[str, Any]) -> str:
         """
@@ -27,8 +90,10 @@ class PagamentosService:
                 - ano: Ano do pagamento 
                 - mes: Mês do pagamento (1-12)
                 - valor: Valor do pagamento
-                - status: "pago" | "inadimplente" | "ausente"
-                - exigivel: boolean (se conta para cobrança)
+                - status: "pago" | "devedor" | "inadimplente" | "ausente"
+                - dataVencimento: Dia do vencimento (10, 15 ou 25) - opcional, padrão 15
+                - carenciaDias: Dias de carência - opcional, padrão 3
+                - exigivel: boolean (DEPRECATED - usar status ao invés)
                 - alunoNome: nome do aluno (denormalizado)
         
         Returns:
@@ -38,8 +103,8 @@ class PagamentosService:
             ValueError: Se dados obrigatórios estão ausentes
             Exception: Se erro ao criar no Firestore
         """
-        # Validar dados obrigatórios
-        campos_obrigatorios = ['alunoId', 'ano', 'mes', 'valor', 'status', 'exigivel']
+        # Validar dados obrigatórios (exigivel agora é opcional para compatibilidade)
+        campos_obrigatorios = ['alunoId', 'ano', 'mes', 'valor', 'status']
         for campo in campos_obrigatorios:
             if campo not in dados_pagamento or dados_pagamento[campo] is None:
                 raise ValueError(f"Campo obrigatório ausente: {campo}")
@@ -51,8 +116,16 @@ class PagamentosService:
         if dados_pagamento['valor'] <= 0:
             raise ValueError("Valor deve ser maior que zero")
         
-        if dados_pagamento['status'] not in ['pago', 'inadimplente', 'ausente']:
-            raise ValueError("Status deve ser: pago, inadimplente ou ausente")
+        if dados_pagamento['status'] not in ['pago', 'devedor', 'inadimplente', 'ausente']:
+            raise ValueError("Status deve ser: pago, devedor, inadimplente ou ausente")
+        
+        # Validar dia de vencimento se fornecido
+        data_vencimento = dados_pagamento.get('dataVencimento', 15)
+        if data_vencimento not in self.VENCIMENTOS_VALIDOS:
+            raise ValueError(f"Data de vencimento deve ser: {self.VENCIMENTOS_VALIDOS}")
+        
+        # Carência padrão se não fornecida
+        carencia_dias = dados_pagamento.get('carenciaDias', self.CARENCIA_PADRAO)
         
         # Gerar ID estável e campo ym
         aluno_id = dados_pagamento['alunoId']
@@ -70,14 +143,27 @@ class PagamentosService:
             'ym': ym,
             'valor': dados_pagamento['valor'],
             'status': dados_pagamento['status'],
-            'exigivel': dados_pagamento['exigivel'],
+            'dataVencimento': data_vencimento,
+            'carenciaDias': carencia_dias,
             'createdAt': agora,
             'updatedAt': agora
         }
         
+        # Manter campo exigivel para compatibilidade retroativa
+        if 'exigivel' in dados_pagamento:
+            documento['exigivel'] = dados_pagamento['exigivel']
+        else:
+            # Auto-calcular exigivel baseado no status (para compatibilidade)
+            documento['exigivel'] = dados_pagamento['status'] in ['devedor', 'inadimplente']
+        
         # Adicionar campos opcionais
         if 'alunoNome' in dados_pagamento:
             documento['alunoNome'] = dados_pagamento['alunoNome']
+        
+        # Calcular e adicionar data de atraso (quando deve entrar em inadimplência)
+        if dados_pagamento['status'] in ['devedor', 'inadimplente']:
+            data_atraso = date(ano, mes, data_vencimento) + timedelta(days=carencia_dias)
+            documento['dataAtraso'] = data_atraso.strftime('%Y-%m-%d')
         
         # Se status é "pago", adicionar paidAt
         if dados_pagamento['status'] == 'pago':
@@ -254,6 +340,18 @@ class PagamentosService:
         
         return self.atualizar_pagamento(pagamento_id, dados_atualizacao)
     
+    def marcar_como_devedor(self, pagamento_id: str) -> bool:
+        """
+        Marca um pagamento como devedor (a cobrar)
+        
+        Args:
+            pagamento_id: ID do pagamento
+        
+        Returns:
+            bool: True se marcado como devedor
+        """
+        return self.atualizar_pagamento(pagamento_id, {'status': 'devedor'})
+    
     def marcar_como_inadimplente(self, pagamento_id: str) -> bool:
         """
         Marca um pagamento como inadimplente
@@ -355,6 +453,44 @@ class PagamentosService:
         except Exception as e:
             raise Exception(f"Erro ao obter inadimplentes: {str(e)}")
     
+    def obter_devedores(self, ym: Optional[str] = None) -> List[Dict[str, Any]]:
+        """
+        Obtém lista de pagamentos em status devedor (a cobrar)
+        
+        Args:
+            ym: Filtrar por mês específico (YYYY-MM), se None pega todos
+        
+        Returns:
+            Lista de pagamentos em status devedor
+        """
+        try:
+            # Para evitar índice composto, fazer consulta simples e filtrar no cliente
+            if ym:
+                # Consulta apenas por ym
+                query = self.db.collection(self.collection_name).where(filter=FieldFilter('ym', '==', ym))
+            else:
+                # Consulta todos os documentos dos últimos 6 meses
+                query = self.db.collection(self.collection_name).limit(1000)
+            
+            docs = query.stream()
+            
+            devedores = []
+            for doc in docs:
+                pagamento = doc.to_dict()
+                pagamento['id'] = doc.id
+                
+                # Filtrar apenas status devedor
+                if pagamento.get('status') == 'devedor':
+                    devedores.append(pagamento)
+            
+            # Ordenar por ym (mais recente primeiro)
+            devedores.sort(key=lambda x: x.get('ym', ''), reverse=True)
+            
+            return devedores
+            
+        except Exception as e:
+            raise Exception(f"Erro ao obter devedores: {str(e)}")
+    
     def obter_estatisticas_mes(self, ym: str) -> Dict[str, Any]:
         """
         Obtém estatísticas de pagamentos de um mês
@@ -371,23 +507,35 @@ class PagamentosService:
             
             total_pagamentos = len(pagamentos_mes)
             pagos = [p for p in pagamentos_mes if p['status'] == 'pago']
-            inadimplentes = [p for p in pagamentos_mes if p['status'] == 'inadimplente' and p.get('exigivel', True)]
+            devedores = [p for p in pagamentos_mes if p['status'] == 'devedor']
+            inadimplentes = [p for p in pagamentos_mes if p['status'] == 'inadimplente']
             ausentes = [p for p in pagamentos_mes if p['status'] == 'ausente']
             
             receita_total = sum(p['valor'] for p in pagos)
+            valor_devedores = sum(p['valor'] for p in devedores)
             valor_inadimplencia = sum(p['valor'] for p in inadimplentes)
+            
+            # Total exigível = devedores + inadimplentes
+            total_exigivel = len(devedores) + len(inadimplentes)
+            valor_total_exigivel = valor_devedores + valor_inadimplencia
             
             return {
                 'ym': ym,
                 'total_pagamentos': total_pagamentos,
                 'total_pagos': len(pagos),
+                'total_devedores': len(devedores),
                 'total_inadimplentes': len(inadimplentes),
                 'total_ausentes': len(ausentes),
+                'total_exigivel': total_exigivel,
                 'receita_total': receita_total,
+                'valor_devedores': valor_devedores,
                 'valor_inadimplencia': valor_inadimplencia,
+                'valor_total_exigivel': valor_total_exigivel,
                 'taxa_inadimplencia': (len(inadimplentes) / max(1, total_pagamentos - len(ausentes))) * 100,
+                'taxa_cobranca': (total_exigivel / max(1, total_pagamentos - len(ausentes))) * 100,
                 'detalhes': {
                     'pagos': pagos,
+                    'devedores': devedores,
                     'inadimplentes': inadimplentes,
                     'ausentes': ausentes
                 }
@@ -427,6 +575,7 @@ class PagamentosService:
         Args:
             ym: Mês no formato YYYY-MM
             alunos_ativos: Lista de alunos ativos com dados necessários
+                - Cada aluno pode ter 'dataVencimento' (10, 15 ou 25)
         
         Returns:
             Lista de IDs dos pagamentos criados
@@ -442,15 +591,26 @@ class PagamentosService:
                 )
                 
                 if not pagamento_existente:
-                    # Criar pagamento automático como inadimplente
+                    # Obter dia de vencimento do aluno (padrão: 15)
+                    data_vencimento = aluno.get('dataVencimento', 15)
+                    
+                    # Calcular status inicial baseado na data atual
+                    status_inicial = self.calcular_status_pagamento(ano, mes, data_vencimento)
+                    
+                    # Se ainda está 'pendente', criar como 'devedor' (será atualizado depois)
+                    if status_inicial == 'pendente':
+                        status_inicial = 'devedor'
+                    
+                    # Criar pagamento automático
                     dados_pagamento = {
                         'alunoId': aluno['id'],
                         'alunoNome': aluno.get('nome', 'N/A'),
                         'ano': ano,
                         'mes': mes,
-                        'valor': aluno.get('valor_plano', 150.0),  # Valor padrão se não especificado
-                        'status': 'inadimplente',
-                        'exigivel': True
+                        'valor': aluno.get('valor_plano', 150.0),
+                        'status': status_inicial,
+                        'dataVencimento': data_vencimento,
+                        'carenciaDias': self.CARENCIA_PADRAO
                     }
                     
                     pagamento_id = self.criar_pagamento(dados_pagamento)
