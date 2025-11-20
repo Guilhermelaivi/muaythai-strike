@@ -209,8 +209,8 @@ def show_presencas():
     """Função principal que exibe a página de ausências"""
     init_session_state()
     
-    st.title("❌ Gestão de Ausências")
-    st.caption("Marque apenas quem faltou - todos os demais serão marcados como presentes")
+    st.title("✅ Gestão de Presenças")
+    st.caption("ℹ️ Marque apenas quem faltou - todos os demais serão automaticamente marcados como presentes")
     
     exibir_gestao_ausencias()
 

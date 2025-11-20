@@ -81,7 +81,7 @@ def exibir_registrar_graduacao():
             )
             
             data_graduacao = st.date_input(
-                "Data da graduacao:",
+                "Data da graduação:",
                 value=date.today(),
                 key="grad_data"
             )
@@ -90,18 +90,18 @@ def exibir_registrar_graduacao():
             niveis_disponiveis = graduacoes_service.obter_niveis_graduacao_disponiveis()
             
             novo_nivel = st.selectbox(
-                "Novo nivel:",
+                "Novo nível:",
                 options=niveis_disponiveis,
                 key="grad_nivel"
             )
             
             observacoes = st.text_area(
-                "Observacoes (opcional):",
-                placeholder="Ex: Exame realizado com excelencia",
+                "Observações (opcional):",
+                placeholder="Ex: Exame realizado com excelência",
                 key="grad_obs"
             )
         
-        if st.button("Registrar Graduacao", type="primary", key="btn_registrar_grad"):
+        if st.button("✅ Registrar Graduação", type="primary", key="btn_registrar_grad"):
             if aluno_escolhido and novo_nivel:
                 try:
                     indice_aluno = opcoes_alunos.index(aluno_escolhido)
@@ -114,7 +114,7 @@ def exibir_registrar_graduacao():
                         observacoes if observacoes.strip() else None
                     )
                     
-                    st.session_state.graduacoes_feedback_message = f"Graduacao registrada! {aluno['nome']} agora e {novo_nivel}"
+                    st.session_state.graduacoes_feedback_message = f"✅ Graduação registrada! {aluno['nome']} agora é {novo_nivel}"
                     st.session_state.graduacoes_feedback_type = "success"
                     st.rerun()
                     
@@ -151,8 +151,8 @@ def exibir_registrar_graduacao():
 
 def show_graduacoes():
     init_session_state()
-    st.title("Registrar Graduacao")
-    st.markdown("Registre promocoes e atualize graduacoes dos alunos")
+    st.title("🥋 Registrar Graduação")
+    st.markdown("Registre promoções e atualize graduações dos alunos")
     st.divider()
     exibir_registrar_graduacao()
 

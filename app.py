@@ -219,7 +219,7 @@ def main():
                     "👥 Alunos", 
                     "💰 Pagamentos", 
                     "✅ Presenças", 
-                    "🎓 Graduações", 
+                    "🥋 Graduações", 
                     "👨‍👩‍👧‍👦 Turmas"
                 ]
             )
@@ -244,7 +244,7 @@ def main():
         elif page == "✅ Presenças":
             from pages.presencas import show_presencas
             show_presencas()
-        elif page == "🎓 Graduações":
+        elif page == "🥋 Graduações":
             from pages.graduacoes import show_graduacoes
             show_graduacoes()
         elif page == "👨‍👩‍👧‍👦 Turmas":

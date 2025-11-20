@@ -7,7 +7,7 @@ def show_turmas():
         st.session_state.turmas_service = TurmasService()
     
     turmas_service = st.session_state.turmas_service
-    st.markdown("## Gerenciamento de Turmas")
+    st.markdown("## 👨‍👩‍👧‍👦 Gerenciamento de Turmas")
     
     if 'turmas_modo' not in st.session_state:
         st.session_state.turmas_modo = 'lista'
@@ -15,12 +15,12 @@ def show_turmas():
     col1, col2 = st.columns(2)
     
     with col1:
-        if st.button("Lista de Turmas", use_container_width=True):
+        if st.button("📋 Lista de Turmas", use_container_width=True):
             st.session_state.turmas_modo = 'lista'
             st.rerun()
     
     with col2:
-        if st.button("Nova Turma", use_container_width=True):
+        if st.button("➕ Nova Turma", use_container_width=True):
             st.session_state.turmas_modo = 'nova'
             st.rerun()
     
@@ -32,12 +32,12 @@ def show_turmas():
         mostrar_formulario(turmas_service)
 
 def mostrar_lista(turmas_service):
-    st.markdown("### Lista de Turmas")
+    st.markdown("### 📋 Lista de Turmas")
     
     turmas = turmas_service.listar_turmas()
     
     if not turmas:
-        st.info("Nenhuma turma cadastrada.")
+        st.info("ℹ️ Nenhuma turma cadastrada.")
         return
     
     col1, col2, col3 = st.columns(3)
@@ -58,7 +58,7 @@ def mostrar_lista(turmas_service):
         horario_fim = turma.get('horario_fim') or turma.get('horarioFim', '')
         
         if horario_inicio and horario_fim:
-            titulo = f"{turma['nome']} ({horario_inicio} as {horario_fim})"
+            titulo = f"{turma['nome']} ({horario_inicio} às {horario_fim})"
         else:
             titulo = turma['nome']
         
@@ -67,9 +67,9 @@ def mostrar_lista(turmas_service):
             
             with col1:
                 if horario_inicio and horario_fim:
-                    st.write(f"**Horario:** {horario_inicio} - {horario_fim}")
+                    st.write(f"**Horário:** {horario_inicio} - {horario_fim}")
                 else:
-                    st.write(f"**Horario:** Nao definido")
+                    st.write(f"**Horário:** Não definido")
                 
                 dias = turma.get('dias_semana', [])
                 if dias:
@@ -77,34 +77,34 @@ def mostrar_lista(turmas_service):
                     st.write(f"**Dias:** {dias_texto}")
                 
                 if turma.get('descricao'):
-                    st.write(f"**Descricao:** {turma['descricao']}")
+                    st.write(f"**Descrição:** {turma['descricao']}")
                 
                 status = "Ativa" if turma.get('ativo', True) else "Inativa"
                 st.write(f"**Status:** {status}")
             
             with col2:
                 if turma.get('ativo', True):
-                    if st.button("Desativar", key=f"desativar_{turma['id']}"):
+                    if st.button("❌ Desativar", key=f"desativar_{turma['id']}"):
                         turmas_service.atualizar_turma(turma['id'], {'ativo': False})
-                        st.success("Turma desativada!")
+                        st.success("✅ Turma desativada!")
                         st.rerun()
                 else:
-                    if st.button("Ativar", key=f"ativar_{turma['id']}"):
+                    if st.button("✅ Ativar", key=f"ativar_{turma['id']}"):
                         turmas_service.atualizar_turma(turma['id'], {'ativo': True})
-                        st.success("Turma ativada!")
+                        st.success("✅ Turma ativada!")
                         st.rerun()
 
 def mostrar_formulario(turmas_service):
-    st.markdown("### Cadastrar Nova Turma")
+    st.markdown("### ➕ Cadastrar Nova Turma")
     
     with st.form("form_turma"):
-        nome = st.text_input("Nome da Turma", placeholder="Ex: KIDS, ADULTA Matutino")
+        nome = st.text_input("🏛️ Nome da Turma", placeholder="Ex: KIDS, ADULTA Matutino")
         
         col1, col2 = st.columns(2)
         with col1:
-            horario_inicio = st.time_input("Horario de Inicio")
+            horario_inicio = st.time_input("⏰ Horário de Início")
         with col2:
-            horario_fim = st.time_input("Horario de Fim")
+            horario_fim = st.time_input("⏰ Horário de Fim")
         
         st.markdown("**Dias da Semana:**")
         col1, col2, col3, col4, col5 = st.columns(5)
@@ -120,24 +120,24 @@ def mostrar_formulario(turmas_service):
         with col5:
             sex = st.checkbox("Sex")
         
-        descricao = st.text_area("Descricao", placeholder="Informacoes adicionais sobre a turma")
+        descricao = st.text_area("📝 Descrição", placeholder="Informações adicionais sobre a turma")
         
-        submitted = st.form_submit_button("Cadastrar Turma")
+        submitted = st.form_submit_button("✅ Cadastrar Turma")
         
         if submitted:
             if not nome:
-                st.error("Nome da turma e obrigatorio!")
+                st.error("❌ Nome da turma é obrigatório!")
                 return
             
             dias_semana = []
             if seg: dias_semana.append("Segunda")
-            if ter: dias_semana.append("Terca")
+            if ter: dias_semana.append("Terça")
             if qua: dias_semana.append("Quarta")
             if qui: dias_semana.append("Quinta")
             if sex: dias_semana.append("Sexta")
             
             if not dias_semana:
-                st.error("Selecione pelo menos um dia da semana!")
+                st.error("❌ Selecione pelo menos um dia da semana!")
                 return
             
             turma_data = {
