@@ -3,6 +3,7 @@ from datetime import date
 import pandas as pd
 from src.services.graduacoes_service import GraduacoesService
 from src.services.alunos_service import AlunosService
+from src.services.turmas_service import TurmasService
 
 def init_session_state():
     if 'graduacoes_feedback_message' not in st.session_state:
@@ -13,6 +14,7 @@ def init_session_state():
 def exibir_registrar_graduacao():
     graduacoes_service = GraduacoesService()
     alunos_service = AlunosService()
+    turmas_service = TurmasService()
     
     if st.session_state.graduacoes_feedback_message:
         if st.session_state.graduacoes_feedback_type == "success":
@@ -28,12 +30,46 @@ def exibir_registrar_graduacao():
             st.rerun()
     
     try:
-        alunos = alunos_service.listar_alunos()
-        if not alunos:
+        # Filtro por turma
+        col_filter1, col_filter2 = st.columns(2)
+        
+        with col_filter1:
+            # Carregar turmas
+            turmas = turmas_service.listar_turmas(apenas_ativas=True)
+            if not turmas:
+                st.warning("⚠️ Nenhuma turma cadastrada no sistema.")
+                return
+            
+            opcoes_turmas = ["Todas as turmas"] + [f"{t.get('nome', 'Sem nome')} ({t.get('horarioInicio', '')} - {t.get('horarioFim', '')})" for t in turmas]
+            turma_map = {opcoes_turmas[i+1]: turmas[i] for i in range(len(turmas))}
+            
+            turma_filtro = st.selectbox(
+                "🏫 Filtrar por Turma",
+                options=opcoes_turmas,
+                key="grad_turma_filtro"
+            )
+        
+        # Carregar e filtrar alunos
+        todos_alunos = alunos_service.listar_alunos()
+        if not todos_alunos:
             st.warning("Nenhum aluno cadastrado. Cadastre alunos primeiro.")
             return
         
+        # Aplicar filtro de turma
+        if turma_filtro == "Todas as turmas":
+            alunos = todos_alunos
+        else:
+            turma_obj = turma_map[turma_filtro]
+            turma_nome = turma_obj.get('nome', '')
+            alunos = [a for a in todos_alunos if a.get('turma', '') == turma_nome]
+        
+        if not alunos:
+            st.info("ℹ️ Nenhum aluno encontrado para esta turma.")
+            return
+        
         alunos.sort(key=lambda x: x.get('nome', ''))
+        
+        st.divider()
         
         col1, col2 = st.columns(2)
         
@@ -89,6 +125,31 @@ def exibir_registrar_graduacao():
                     st.session_state.graduacoes_feedback_message = f"Erro: {str(e)}"
                     st.session_state.graduacoes_feedback_type = "error"
                     st.rerun()
+        
+        # Exibir lista de alunos da turma
+        st.divider()
+        st.subheader(f"📋 Lista de Alunos ({len(alunos)} aluno{'s' if len(alunos) != 1 else ''})")
+        
+        # Preparar dados para a tabela
+        dados_tabela = []
+        for aluno in alunos:
+            dados_tabela.append({
+                "Nome": aluno.get('nome', 'N/A'),
+                "Graduação Atual": aluno.get('graduacao', 'Sem graduação'),
+                "Turma": aluno.get('turma', 'Sem turma'),
+                "Responsável": aluno.get('responsavel', 'N/A'),
+                "Contato": aluno.get('contato', 'N/A')
+            })
+        
+        if dados_tabela:
+            df = pd.DataFrame(dados_tabela)
+            st.dataframe(
+                df,
+                use_container_width=True,
+                hide_index=True
+            )
+        else:
+            st.info("Nenhum aluno para exibir.")
     
     except Exception as e:
         st.error(f"Erro ao carregar alunos: {str(e)}")
