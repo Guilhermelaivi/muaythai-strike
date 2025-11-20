@@ -71,10 +71,13 @@ class PagamentosService:
         data_cobranca = date(ano, mes, dia_cobranca)
         
         # Data de inadimplência (vencimento + carência)
+        # IMPORTANTE: Com carência = 0, inadimplência começa 1 dia APÓS vencimento
         data_inadimplencia = data_venc + timedelta(days=carencia_dias)
         
         # Calcular status
-        if data_referencia >= data_inadimplencia:
+        # Usa > (maior) e não >= para garantir que NO DIA do vencimento seja 'devedor'
+        # e só APÓS o vencimento seja 'inadimplente'
+        if data_referencia > data_inadimplencia:
             return 'inadimplente'
         elif data_referencia >= data_cobranca:
             return 'devedor'
@@ -598,11 +601,8 @@ class PagamentosService:
                     # Calcular status inicial baseado na data atual
                     status_inicial = self.calcular_status_pagamento(ano, mes, data_vencimento)
                     
-                    # Se ainda está 'pendente', criar como 'devedor' (será atualizado depois)
-                    if status_inicial == 'pendente':
-                        status_inicial = 'devedor'
-                    
-                    # Criar pagamento automático
+                    # Criar pagamento automático com o status calculado
+                    # (não forçar 'devedor' - deixar a lógica natural funcionar)
                     dados_pagamento = {
                         'alunoId': aluno['id'],
                         'alunoNome': aluno.get('nome', 'N/A'),
