@@ -88,8 +88,8 @@ def show_dashboard():
     # Obter dados reais dos serviços (modificado para suportar consulta anual)
     dados_reais = _get_real_data(ym, is_annual_view)
     
-    # Métricas principais
-    col1, col2, col3, col4 = st.columns(4)
+    # Métricas principais - 5 colunas para separar A Cobrar e Inadimplentes
+    col1, col2, col3, col4, col5 = st.columns(5)
     
     with col1:
         periodo_label = "do Ano" if is_annual_view else "do Mês"
@@ -106,13 +106,22 @@ def show_dashboard():
     with col2:
         st.markdown("""
         <div class="metric-card">
-            <h3>⚠️ Inadimplentes</h3>
-            <h2 style="color: #dc3545;">{}</h2>
-            <small>🎯 Meta: ≤ 5%</small>
+            <h3>🔔 A Cobrar</h3>
+            <h2 style="color: #ffc107;">{}</h2>
+            <small>💰 R$ {:.2f}</small>
         </div>
-        """.format(dados_reais['inadimplentes']), unsafe_allow_html=True)
+        """.format(dados_reais['devedores'], dados_reais['valor_devedores']), unsafe_allow_html=True)
     
     with col3:
+        st.markdown("""
+        <div class="metric-card">
+            <h3>🔴 Inadimplentes</h3>
+            <h2 style="color: #dc3545;">{}</h2>
+            <small>💸 R$ {:.2f}</small>
+        </div>
+        """.format(dados_reais['inadimplentes'], dados_reais['valor_inadimplentes']), unsafe_allow_html=True)
+    
+    with col4:
         st.markdown("""
         <div class="metric-card">
             <h3>👥 Alunos Ativos</h3>
@@ -124,7 +133,7 @@ def show_dashboard():
             dados_reais['percentual_ativos']
         ), unsafe_allow_html=True)
     
-    with col4:
+    with col5:
         presencas_label = "Presenças" if is_annual_view else "Presenças"
         media_label = f"Média: {dados_reais['media_presencas_dia']:.1f}/dia" if not is_annual_view else f"Total no ano: {dados_reais['total_presencas']}"
         
@@ -441,7 +450,10 @@ def _get_real_data(ym: str, is_annual_view: bool = False) -> Dict[str, Any]:
                 # Para visualização anual, calcular receita de todo o ano
                 ano = int(ym)
                 receita_total_ano = 0.0
+                devedores_total = 0
                 inadimplentes_total = 0
+                valor_devedores_total = 0.0
+                valor_inadimplentes_total = 0.0
                 
                 # Buscar todos os meses do ano
                 for mes in range(1, 13):
@@ -449,20 +461,32 @@ def _get_real_data(ym: str, is_annual_view: bool = False) -> Dict[str, Any]:
                     try:
                         estat_mes = cache_manager.get_estatisticas_pagamentos_cached(pagamentos_service, ym_mes)
                         receita_total_ano += estat_mes.get('receita_total', 0.0)
+                        devedores_total += estat_mes.get('total_devedores', 0)
                         inadimplentes_total += estat_mes.get('total_inadimplentes', 0)
+                        valor_devedores_total += estat_mes.get('valor_devedores', 0.0)
+                        valor_inadimplentes_total += estat_mes.get('valor_inadimplencia', 0.0)
                     except:
                         continue
                 
                 receita = receita_total_ano
+                devedores = devedores_total
                 inadimplentes = inadimplentes_total
+                valor_devedores = valor_devedores_total
+                valor_inadimplentes = valor_inadimplentes_total
             else:
                 # Consulta mensal normal
                 estatisticas_pag = cache_manager.get_estatisticas_pagamentos_cached(pagamentos_service, ym)
                 receita = estatisticas_pag.get('receita_total', 0.0)
+                devedores = estatisticas_pag.get('total_devedores', 0)
                 inadimplentes = estatisticas_pag.get('total_inadimplentes', 0)
+                valor_devedores = estatisticas_pag.get('valor_devedores', 0.0)
+                valor_inadimplentes = estatisticas_pag.get('valor_inadimplencia', 0.0)
         except Exception:
             receita = 0.0
+            devedores = 0
             inadimplentes = 0
+            valor_devedores = 0.0
+            valor_inadimplentes = 0.0
         
         # Dados de presenças (com cache) - modificado para suportar consulta anual
         try:
@@ -495,7 +519,10 @@ def _get_real_data(ym: str, is_annual_view: bool = False) -> Dict[str, Any]:
         
         return {
             'receita': receita,
+            'devedores': devedores,
             'inadimplentes': inadimplentes,
+            'valor_devedores': valor_devedores,
+            'valor_inadimplentes': valor_inadimplentes,
             'ativos': alunos_ativos,
             'inativos': alunos_inativos,
             'percentual_ativos': percentual_ativos,

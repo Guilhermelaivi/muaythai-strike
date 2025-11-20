@@ -14,13 +14,14 @@ class PagamentosService:
     
     # Constantes para dias de vencimento válidos
     VENCIMENTOS_VALIDOS = [10, 15, 25]
-    CARENCIA_PADRAO = 3  # Dias de carência para inadimplência
+    CARENCIA_PADRAO = 0  # SEM carência - Após 1 dia do vencimento = inadimplente
     
     # Mapeamento de vencimento para dia de cobrança (devedor)
+    # Alerta aparece 10 dias ANTES do vencimento para gestão
     DIAS_COBRANCA = {
-        10: 1,   # Vencimento dia 10 → entra como devedor dia 01
-        15: 5,   # Vencimento dia 15 → entra como devedor dia 05
-        25: 15   # Vencimento dia 25 → entra como devedor dia 15
+        10: 1,   # Vencimento dia 10 → alerta a partir do dia 01 (9 dias antes)
+        15: 5,   # Vencimento dia 15 → alerta a partir do dia 05 (10 dias antes)
+        25: 15   # Vencimento dia 25 → alerta a partir do dia 15 (10 dias antes)
     }
     
     def __init__(self):
@@ -34,19 +35,19 @@ class PagamentosService:
         Calcula o status de um pagamento baseado nas regras de negócio
         
         Regras:
-        - Devedor (a cobrar): Entra no dia de cobrança conforme vencimento
-          - Vencimento dia 10 → devedor a partir do dia 01
-          - Vencimento dia 15 → devedor a partir do dia 05
-          - Vencimento dia 25 → devedor a partir do dia 15
+        - Devedor (a cobrar): Alerta de cobrança ~10 dias ANTES do vencimento
+          - Vencimento dia 10 → alerta a partir do dia 01 (9 dias antes)
+          - Vencimento dia 15 → alerta a partir do dia 05 (10 dias antes)
+          - Vencimento dia 25 → alerta a partir do dia 15 (10 dias antes)
         
-        - Inadimplente (em atraso): Após vencimento + carência
-          - Carência padrão: 3 dias
+        - Inadimplente (em atraso): Após vencimento (SEM carência)
+          - Passou 1 dia do vencimento = inadimplente
         
         Args:
             ano: Ano do pagamento
             mes: Mês do pagamento
             data_vencimento: Dia do vencimento (10, 15 ou 25)
-            carencia_dias: Dias de carência (padrão: 3)
+            carencia_dias: Dias de carência (padrão: 0 - sem carência)
             data_referencia: Data para cálculo (padrão: hoje)
         
         Returns:
@@ -92,7 +93,7 @@ class PagamentosService:
                 - valor: Valor do pagamento
                 - status: "pago" | "devedor" | "inadimplente" | "ausente"
                 - dataVencimento: Dia do vencimento (10, 15 ou 25) - opcional, padrão 15
-                - carenciaDias: Dias de carência - opcional, padrão 3
+                - carenciaDias: Dias de carência - opcional, padrão 0 (sem carência)
                 - exigivel: boolean (DEPRECATED - usar status ao invés)
                 - alunoNome: nome do aluno (denormalizado)
         

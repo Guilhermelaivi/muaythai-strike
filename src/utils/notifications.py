@@ -135,12 +135,15 @@ class NotificationService:
             
             for pagamento in inadimplentes:
                 try:
-                    # Calcular dias de atraso
+                    # Calcular dias de atraso usando dados REAIS do pagamento
                     ym = pagamento.get('ym', '')
                     if ym:
                         ano, mes = map(int, ym.split('-'))
-                        # Assumir vencimento no dia 15 do mês
-                        data_vencimento = date(ano, mes, 15)
+                        # Usar dia de vencimento REAL do pagamento
+                        dia_vencimento = pagamento.get('dataVencimento', 15)
+                        data_vencimento = date(ano, mes, dia_vencimento)
+                        
+                        # SEM carência - passou 1 dia = inadimplente
                         dias_atraso = (hoje - data_vencimento).days
                         
                         if dias_atraso >= dias_atraso_limite:
@@ -157,6 +160,104 @@ class NotificationService:
             
         except Exception as e:
             raise Exception(f"Erro ao verificar inadimplentes críticos: {str(e)}")
+    
+    def verificar_devedores(self, ym: Optional[str] = None) -> List[Dict[str, Any]]:
+        """
+        Verifica devedores (pagamentos a cobrar) - alerta para gestão
+        
+        Devedores são pagamentos que entraram no período de cobrança
+        (~10 dias antes do vencimento) mas ainda não venceram.
+        
+        Args:
+            ym: Filtrar por mês específico (YYYY-MM), se None pega mês atual
+        
+        Returns:
+            Lista de pagamentos com status devedor e informações de vencimento
+        """
+        try:
+            # Usar mês atual se não especificado
+            if not ym:
+                hoje = date.today()
+                ym = f"{hoje.year:04d}-{hoje.month:02d}"
+            
+            # Buscar devedores do mês
+            devedores = self.pagamentos_service.obter_devedores(ym=ym)
+            
+            hoje = date.today()
+            devedores_info = []
+            
+            for pagamento in devedores:
+                try:
+                    # Calcular dias até o vencimento
+                    ym_pag = pagamento.get('ym', '')
+                    if ym_pag:
+                        ano, mes = map(int, ym_pag.split('-'))
+                        dia_vencimento = pagamento.get('dataVencimento', 15)
+                        data_vencimento = date(ano, mes, dia_vencimento)
+                        dias_ate_vencer = (data_vencimento - hoje).days
+                        
+                        pagamento_info = {
+                            'id': pagamento.get('id'),
+                            'alunoId': pagamento.get('alunoId'),
+                            'alunoNome': pagamento.get('alunoNome', 'N/A'),
+                            'valor': pagamento.get('valor', 0),
+                            'ym': ym_pag,
+                            'dataVencimento': dia_vencimento,
+                            'data_vencimento_completa': data_vencimento.strftime('%Y-%m-%d'),
+                            'dias_ate_vencer': dias_ate_vencer,
+                            'status_alerta': self._calcular_status_alerta_cobranca(dias_ate_vencer)
+                        }
+                        devedores_info.append(pagamento_info)
+                except:
+                    continue
+            
+            # Ordenar por dias até vencer (mais urgentes primeiro)
+            devedores_info.sort(key=lambda x: x.get('dias_ate_vencer', 999))
+            
+            return devedores_info
+            
+        except Exception as e:
+            raise Exception(f"Erro ao verificar devedores: {str(e)}")
+    
+    def _calcular_status_alerta_cobranca(self, dias_ate_vencer: int) -> Dict[str, str]:
+        """
+        Calcula status de alerta para cobrança (devedores)
+        
+        Args:
+            dias_ate_vencer: Dias até o vencimento
+        
+        Returns:
+            Dict com informações do alerta
+        """
+        if dias_ate_vencer <= 0:
+            # Já venceu (provavelmente está virando inadimplente)
+            return {
+                'nivel': 'CRÍTICO',
+                'cor': 'red',
+                'emoji': '🔴',
+                'acao': 'Vencimento hoje ou passou - verificar urgente'
+            }
+        elif dias_ate_vencer <= 3:
+            return {
+                'nivel': 'URGENTE',
+                'cor': 'orange',
+                'emoji': '🟠',
+                'acao': 'Vence em poucos dias - contato imediato'
+            }
+        elif dias_ate_vencer <= 7:
+            return {
+                'nivel': 'ATENÇÃO',
+                'cor': 'yellow',
+                'emoji': '🟡',
+                'acao': 'Vence na próxima semana - lembrete'
+            }
+        else:
+            return {
+                'nivel': 'NORMAL',
+                'cor': 'blue',
+                'emoji': '🔔',
+                'acao': 'Monitorar'
+            }
     
     def _calcular_status_risco_inadimplencia(self, dias_atraso: int) -> Dict[str, str]:
         """

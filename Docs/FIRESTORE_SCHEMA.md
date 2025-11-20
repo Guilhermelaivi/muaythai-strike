@@ -47,15 +47,26 @@ Arquitetura de dados — MVP Academia Muay Thai (Streamlit + Firestore)
 - `mes: number` (1–12)
 - `ym: "YYYY-MM"`
 - `valor: number`
-- `status: "pago" | "inadimplente" | "ausente"`
-- `exigivel: boolean` (se conta para cobrança; use `false` para cinza)
+- `status: "pago" | "devedor" | "inadimplente" | "ausente"`
+- `dataVencimento: 10 | 15 | 25` (dia do vencimento no mês)
+- `carenciaDias: number` (padrão: 0 - sem carência, 1 dia após = inadimplente)
+- `dataAtraso?: "YYYY-MM-DD"` (calculada - quando vira inadimplente)
+- `exigivel: boolean` (DEPRECATED - usar status ao invés)
 - `paidAt?: serverTimestamp` (quando `status=="pago"`)
 - `createdAt, updatedAt: serverTimestamp`
 
 **Regras de negócio (pagamentos):**
 - **ID** = `alunoId_YYYY_MM` (evita duplicata; permite upsert com `merge:true`).
-- `pago` → setar `paidAt`.
-- `ausente` → considerar `exigivel=false` (não entra na cobrança).
+- **Vencimentos válidos**: Apenas dia 10, 15 ou 25 do mês
+- **Status Devedor** (🔔 A Cobrar): 
+  - Alerta para gestão ~10 dias ANTES do vencimento
+  - Vencimento dia 10 → alerta dia 01 (9 dias antes)
+  - Vencimento dia 15 → alerta dia 05 (10 dias antes)
+  - Vencimento dia 25 → alerta dia 15 (10 dias antes)
+- **Status Inadimplente** (🔴 Em Atraso):
+  - SEM carência - passou 1 dia do vencimento = inadimplente
+- **Status Pago**: setar `paidAt` com timestamp
+- **Status Ausente**: considerar `exigivel=false` (não entra na cobrança)
 
 ---
 
@@ -69,8 +80,12 @@ Arquitetura de dados — MVP Academia Muay Thai (Streamlit + Firestore)
 ---
 
 ## Convenções & Enum
-- `status` (financeiro): `"pago" | "inadimplente" | "ausente"`
-- Cores na UI: **verde** (pago), **vermelho** (inadimplente), **cinza** (ausente/exigível=false).
+- `status` (financeiro): `"pago" | "devedor" | "inadimplente" | "ausente"`
+- Cores na UI: 
+  - **🟢 Verde** (pago) - Pagamento confirmado
+  - **🔔 Amarelo** (devedor) - A cobrar (alerta para gestão)
+  - **🔴 Vermelho** (inadimplente) - Em atraso
+  - **⚪ Cinza** (ausente) - Não exigível
 
 ---
 
