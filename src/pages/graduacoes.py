@@ -40,8 +40,8 @@ def exibir_registrar_graduacao():
                 st.warning("⚠️ Nenhuma turma cadastrada no sistema.")
                 return
             
-            opcoes_turmas = ["Todas as turmas"] + [f"{t.get('nome', 'Sem nome')} ({t.get('horarioInicio', '')} - {t.get('horarioFim', '')})" for t in turmas]
-            turma_map = {opcoes_turmas[i+1]: turmas[i] for i in range(len(turmas))}
+            opcoes_turmas = [f"{t.get('nome', 'Sem nome')} ({t.get('horarioInicio', '')} - {t.get('horarioFim', '')})" for t in turmas]
+            turma_map = {opcoes_turmas[i]: turmas[i] for i in range(len(turmas))}
             
             turma_filtro = st.selectbox(
                 "🏫 Filtrar por Turma",
@@ -56,12 +56,9 @@ def exibir_registrar_graduacao():
             return
         
         # Aplicar filtro de turma
-        if turma_filtro == "Todas as turmas":
-            alunos = todos_alunos
-        else:
-            turma_obj = turma_map[turma_filtro]
-            turma_nome = turma_obj.get('nome', '')
-            alunos = [a for a in todos_alunos if a.get('turma', '') == turma_nome]
+        turma_obj = turma_map[turma_filtro]
+        turma_nome = turma_obj.get('nome', '')
+        alunos = [a for a in todos_alunos if a.get('turma', '') == turma_nome]
         
         if not alunos:
             st.info("ℹ️ Nenhum aluno encontrado para esta turma.")
