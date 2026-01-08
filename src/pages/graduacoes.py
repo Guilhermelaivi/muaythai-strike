@@ -83,6 +83,7 @@ def exibir_registrar_graduacao():
             data_graduacao = st.date_input(
                 "Data da graduação:",
                 value=date.today(),
+                min_value=date(2026, 1, 1) if st.session_state.get('data_mode', 'operacional') == 'operacional' else date(2024, 1, 1),
                 key="grad_data"
             )
         

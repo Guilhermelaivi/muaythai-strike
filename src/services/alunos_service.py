@@ -8,6 +8,8 @@ from datetime import datetime, date
 import streamlit as st
 from google.cloud.firestore_v1 import SERVER_TIMESTAMP
 from src.utils.firebase_config import FirebaseConfig
+from src.utils.readonly_guard import ensure_writable
+from src.utils.operational_scope import should_apply_operational_scope, aluno_is_operational
 
 class AlunosService:
     """Serviço para operações CRUD de Alunos"""
@@ -40,6 +42,8 @@ class AlunosService:
             Exception: Se houver erro na criação
         """
         try:
+            ensure_writable("criar aluno")
+
             # Se recebeu um dicionário, extrair os dados
             if isinstance(dados_aluno_ou_nome, dict):
                 dados = dados_aluno_ou_nome
@@ -115,6 +119,11 @@ class AlunosService:
             if doc.exists:
                 aluno_data = doc.to_dict()
                 aluno_data['id'] = doc.id
+
+                # In operational UI, hide legacy students entirely.
+                if should_apply_operational_scope() and not aluno_is_operational(aluno_data):
+                    return None
+
                 return aluno_data
             
             return None
@@ -149,6 +158,10 @@ class AlunosService:
             for doc in docs:
                 aluno_data = doc.to_dict()
                 aluno_data['id'] = doc.id
+
+                if should_apply_operational_scope() and not aluno_is_operational(aluno_data):
+                    continue
+
                 alunos.append(aluno_data)
             
             # Se não houve filtro de status mas queremos ordenar, ordenar no cliente
@@ -176,6 +189,8 @@ class AlunosService:
             bool: True se atualização foi bem-sucedida
         """
         try:
+            ensure_writable("atualizar aluno")
+
             # Preparar dados para atualização
             update_data = self._preparar_dados_atualizacao(dados_atualizacao)
             
@@ -203,6 +218,7 @@ class AlunosService:
             bool: True se vinculação foi bem-sucedida
         """
         try:
+            ensure_writable("vincular plano")
             self.collection.document(aluno_id).update({
                 'planoId': plano_id,
                 'updatedAt': SERVER_TIMESTAMP
@@ -243,6 +259,7 @@ class AlunosService:
             bool: True se inativação foi bem-sucedida
         """
         try:
+            ensure_writable("inativar aluno")
             if not data_inativacao:
                 data_inativacao = date.today().strftime('%Y-%m-%d')
             
@@ -272,6 +289,7 @@ class AlunosService:
             bool: True se reativação foi bem-sucedida
         """
         try:
+            ensure_writable("reativar aluno")
             if not data_reativacao:
                 data_reativacao = date.today().strftime('%Y-%m-%d')
             

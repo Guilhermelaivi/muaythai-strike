@@ -7,6 +7,8 @@ from datetime import datetime, date
 from typing import Dict, List, Optional, Any
 from google.cloud import firestore
 from src.utils.firebase_config import get_firestore_client
+from src.utils.readonly_guard import ensure_writable
+from src.utils.operational_scope import should_apply_operational_scope, presenca_is_operational
 import uuid
 
 class PresencasService:
@@ -34,6 +36,8 @@ class PresencasService:
             ValueError: Se dados obrigatórios estão ausentes
             Exception: Se erro ao registrar no Firestore
         """
+        ensure_writable("registrar presença")
+
         if not aluno_id or not aluno_id.strip():
             raise ValueError("ID do aluno é obrigatório")
         
@@ -183,6 +187,10 @@ class PresencasService:
                 
                 if incluir:
                     presencas.append(presenca)
+
+            # In operational UI, hide legacy (pre-2026) presence records.
+            if should_apply_operational_scope():
+                presencas = [p for p in presencas if presenca_is_operational(p)]
             
             # Ordenar por data (mais recente primeiro)
             presencas.sort(key=lambda x: x.get('data', ''), reverse=True)
@@ -204,6 +212,8 @@ class PresencasService:
             bool: True se atualizado com sucesso
         """
         try:
+            ensure_writable("atualizar presença")
+
             # Verificar se presença existe
             if not self.buscar_presenca(presenca_id):
                 raise ValueError(f"Presença não encontrada: {presenca_id}")
@@ -415,6 +425,8 @@ class PresencasService:
             bool: True se deletado com sucesso
         """
         try:
+            ensure_writable("deletar presença")
+
             # Verificar se existe
             if not self.buscar_presenca(presenca_id):
                 raise ValueError(f"Presença não encontrada: {presenca_id}")

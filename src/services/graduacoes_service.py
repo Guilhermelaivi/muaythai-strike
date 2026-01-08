@@ -7,6 +7,7 @@ from datetime import datetime, date
 from typing import Dict, List, Optional, Any
 from google.cloud import firestore
 from src.utils.firebase_config import get_firestore_client
+from src.utils.readonly_guard import ensure_writable
 import uuid
 
 class GraduacoesService:
@@ -36,6 +37,8 @@ class GraduacoesService:
             ValueError: Se dados obrigatórios estão ausentes
             Exception: Se erro ao registrar no Firestore
         """
+        ensure_writable("registrar graduação")
+
         if not aluno_id or not aluno_id.strip():
             raise ValueError("ID do aluno é obrigatório")
         
@@ -257,6 +260,8 @@ class GraduacoesService:
             bool: True se atualizado com sucesso
         """
         try:
+            ensure_writable("atualizar graduação")
+
             # Verificar se graduação existe
             if not self.buscar_graduacao(aluno_id, grad_id):
                 raise ValueError(f"Graduação não encontrada: {grad_id}")
@@ -299,6 +304,8 @@ class GraduacoesService:
             bool: True se deletado com sucesso
         """
         try:
+            ensure_writable("deletar graduação")
+
             # Verificar se existe
             graduacao = self.buscar_graduacao(aluno_id, grad_id)
             if not graduacao:
@@ -336,7 +343,7 @@ class GraduacoesService:
         except Exception as e:
             raise Exception(f"Erro ao deletar graduação: {str(e)}")
     
-    def obter_estatisticas_graduacoes(self) -> Dict[str, Any]:
+    def obter_estatisticas_graduacoes(self, mode: str = 'operacional') -> Dict[str, Any]:
         """
         Obtém estatísticas gerais sobre graduações no sistema
         
@@ -351,11 +358,28 @@ class GraduacoesService:
             graduacoes_por_nivel = {}
             alunos_com_graduacoes = 0
             total_promocoes = 0
+
+            def _include_aluno(aluno_data: Dict[str, Any]) -> bool:
+                # Histórico inclui tudo; operacional considera somente alunos 2026+
+                if mode == 'historico':
+                    return True
+
+                ativo_desde = aluno_data.get('ativoDesde')
+                if not ativo_desde or not isinstance(ativo_desde, str):
+                    return False
+                try:
+                    return int(ativo_desde[:4]) >= 2026
+                except Exception:
+                    return False
             
             for aluno_doc in alunos_query:
-                total_alunos += 1
                 aluno_id = aluno_doc.id
                 aluno_data = aluno_doc.to_dict()
+
+                if not _include_aluno(aluno_data):
+                    continue
+
+                total_alunos += 1
                 
                 # Contar graduação atual
                 graduacao_atual = aluno_data.get('graduacao', 'Sem graduação')

@@ -60,10 +60,12 @@ def exibir_gestao_ausencias():
         )
     
     with col2:
+        modo = st.session_state.get('data_mode', 'operacional')
+        min_data = date(2026, 1, 1) if modo == 'operacional' else date(2024, 1, 1)
         data_selecionada = st.date_input(
             "📅 Data da Aula",
             value=date.today(),
-            min_value=date(2024, 1, 1),  # Desde janeiro de 2024
+            min_value=min_data,
             max_value=date.today(),  # Até hoje (não permite datas futuras)
             key="ausencias_data"
         )

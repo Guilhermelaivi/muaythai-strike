@@ -1,0 +1,2 @@
+1 - vamos ativar o env.
+2 - rodar o projeto. 

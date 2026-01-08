@@ -108,6 +108,8 @@ def _mostrar_lista_pagamentos_filtrada(pagamentos_service: PagamentosService, al
     with col_filtro3:
         # Filtro por Mês
         hoje = date.today()
+        modo = st.session_state.get('data_mode', 'operacional')
+        min_ym = "2026-01" if modo == 'operacional' else "2024-01"
         meses_opcoes = ["Todos os meses"]
         for i in range(12):
             if i == 0:
@@ -119,9 +121,13 @@ def _mostrar_lista_pagamentos_filtrada(pagamentos_service: PagamentosService, al
                     mes += 12
                     ano -= 1
                 mes_ano = f"{ano:04d}-{mes:02d}"
+
+            if mes_ano < min_ym:
+                continue
+
             meses_opcoes.append(mes_ano)
         
-        mes_selecionado = st.selectbox("📅 Mês:", options=meses_opcoes, index=1)
+        mes_selecionado = st.selectbox("📅 Mês:", options=meses_opcoes, index=1 if len(meses_opcoes) > 1 else 0)
         filtro_mes = None if mes_selecionado == "Todos os meses" else mes_selecionado
     
     with col_busca:
@@ -644,7 +650,9 @@ def _mostrar_formulario_novo_pagamento(pagamentos_service: PagamentosService, al
             
             hoje = date.today()
             mes_ref = st.number_input("📅 Mês de Referência *", min_value=1, max_value=12, value=hoje.month)
-            ano_ref = st.number_input("📅 Ano de Referência *", min_value=2020, max_value=2030, value=hoje.year)
+            modo = st.session_state.get('data_mode', 'operacional')
+            min_ano_ref = 2026 if modo == 'operacional' else 2020
+            ano_ref = st.number_input("📅 Ano de Referência *", min_value=min_ano_ref, max_value=2030, value=max(hoje.year, min_ano_ref))
         
         with col2:
             valor = st.number_input("💰 Valor (R$) *", min_value=0.01, step=0.01, format="%.2f", value=150.0)
@@ -756,6 +764,8 @@ def _mostrar_devedores(pagamentos_service: PagamentosService):
     with col1:
         # Gerar opções de mês/ano
         hoje = date.today()
+        modo = st.session_state.get('data_mode', 'operacional')
+        min_ym = "2026-01" if modo == 'operacional' else "2024-01"
         meses_opcoes = ["Todos os meses"]
         for i in range(6):  # Últimos 6 meses
             if i == 0:
@@ -767,9 +777,13 @@ def _mostrar_devedores(pagamentos_service: PagamentosService):
                     mes += 12
                     ano -= 1
                 mes_ano = f"{ano:04d}-{mes:02d}"
+
+            if mes_ano < min_ym:
+                continue
+
             meses_opcoes.append(mes_ano)
         
-        mes_filtro = st.selectbox("📅 Filtrar por mês:", options=meses_opcoes, index=1)
+        mes_filtro = st.selectbox("📅 Filtrar por mês:", options=meses_opcoes, index=1 if len(meses_opcoes) > 1 else 0)
     
     # Carregar devedores
     try:
@@ -839,6 +853,8 @@ def _mostrar_inadimplentes(pagamentos_service: PagamentosService):
     with col1:
         # Gerar opções de mês/ano
         hoje = date.today()
+        modo = st.session_state.get('data_mode', 'operacional')
+        min_ym = "2026-01" if modo == 'operacional' else "2024-01"
         meses_opcoes = ["Todos os meses"]
         for i in range(6):  # Últimos 6 meses
             if i == 0:
@@ -850,9 +866,13 @@ def _mostrar_inadimplentes(pagamentos_service: PagamentosService):
                     mes += 12
                     ano -= 1
                 mes_ano = f"{ano:04d}-{mes:02d}"
+
+            if mes_ano < min_ym:
+                continue
+
             meses_opcoes.append(mes_ano)
         
-        mes_filtro = st.selectbox("📅 Filtrar por mês:", options=meses_opcoes, index=1)
+        mes_filtro = st.selectbox("📅 Filtrar por mês:", options=meses_opcoes, index=1 if len(meses_opcoes) > 1 else 0)
     
     # Carregar inadimplentes
     try:
@@ -919,6 +939,8 @@ def _mostrar_devedores(pagamentos_service: PagamentosService):
     with col1:
         # Gerar opções de mês/ano
         hoje = date.today()
+        modo = st.session_state.get('data_mode', 'operacional')
+        min_ym = "2026-01" if modo == 'operacional' else "2024-01"
         meses_opcoes = ["Todos os meses"]
         for i in range(6):  # Últimos 6 meses
             if i == 0:
@@ -930,9 +952,13 @@ def _mostrar_devedores(pagamentos_service: PagamentosService):
                     mes += 12
                     ano -= 1
                 mes_ano = f"{ano:04d}-{mes:02d}"
+
+            if mes_ano < min_ym:
+                continue
+
             meses_opcoes.append(mes_ano)
         
-        mes_filtro = st.selectbox("📅 Filtrar por mês:", options=meses_opcoes, index=1)
+        mes_filtro = st.selectbox("📅 Filtrar por mês:", options=meses_opcoes, index=1 if len(meses_opcoes) > 1 else 0)
     
     # Carregar devedores
     try:
@@ -1004,6 +1030,9 @@ def _mostrar_estatisticas_pagamentos(pagamentos_service: PagamentosService):
     with col1:
         hoje = date.today()
         mes_atual = f"{hoje.year:04d}-{hoje.month:02d}"
+
+        modo = st.session_state.get('data_mode', 'operacional')
+        min_ym = "2026-01" if modo == 'operacional' else "2024-01"
         
         # Gerar opções de mês
         meses_opcoes = []
@@ -1014,7 +1043,14 @@ def _mostrar_estatisticas_pagamentos(pagamentos_service: PagamentosService):
                 mes += 12
                 ano -= 1
             mes_ano = f"{ano:04d}-{mes:02d}"
+
+            if mes_ano < min_ym:
+                continue
+
             meses_opcoes.append(mes_ano)
+
+        if not meses_opcoes:
+            meses_opcoes = [f"{hoje.year:04d}-{hoje.month:02d}"]
         
         ym_stats = st.selectbox("📅 Mês para análise:", options=meses_opcoes, index=0)
     

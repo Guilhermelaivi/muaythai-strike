@@ -8,6 +8,8 @@ from typing import Dict, List, Optional, Any
 from google.cloud import firestore
 from google.cloud.firestore_v1.base_query import FieldFilter
 from src.utils.firebase_config import get_firestore_client
+from src.utils.readonly_guard import ensure_writable
+from src.utils.operational_scope import should_apply_operational_scope, pagamento_is_operational
 
 class PagamentosService:
     """Serviço para gerenciamento de pagamentos mensais"""
@@ -107,6 +109,8 @@ class PagamentosService:
             ValueError: Se dados obrigatórios estão ausentes
             Exception: Se erro ao criar no Firestore
         """
+        ensure_writable("criar pagamento")
+
         # Validar dados obrigatórios (exigivel agora é opcional para compatibilidade)
         campos_obrigatorios = ['alunoId', 'ano', 'mes', 'valor', 'status']
         for campo in campos_obrigatorios:
@@ -277,6 +281,10 @@ class PagamentosService:
                 
                 if incluir:
                     pagamentos.append(pagamento)
+
+            # In operational UI, hide legacy (pre-2026) payments.
+            if should_apply_operational_scope():
+                pagamentos = [p for p in pagamentos if pagamento_is_operational(p)]
             
             # Ordenação no cliente
             reverse_order = (ordem == 'desc')
@@ -299,6 +307,8 @@ class PagamentosService:
             bool: True se atualizado com sucesso
         """
         try:
+            ensure_writable("atualizar pagamento")
+
             # Verificar se pagamento existe
             if not self.buscar_pagamento(pagamento_id):
                 raise ValueError(f"Pagamento não encontrado: {pagamento_id}")
@@ -408,6 +418,9 @@ class PagamentosService:
                 pagamento = doc.to_dict()
                 pagamento['id'] = doc.id
                 extrato.append(pagamento)
+
+            if should_apply_operational_scope():
+                extrato = [p for p in extrato if pagamento_is_operational(p)]
             
             # Ordenar no cliente por ym (mais recente primeiro)
             extrato.sort(key=lambda x: x.get('ym', ''), reverse=True)
@@ -448,6 +461,9 @@ class PagamentosService:
                 if (pagamento.get('status') == 'inadimplente' and 
                     pagamento.get('exigivel', True)):
                     inadimplentes.append(pagamento)
+
+            if should_apply_operational_scope():
+                inadimplentes = [p for p in inadimplentes if pagamento_is_operational(p)]
             
             # Ordenar por ym (mais recente primeiro)
             inadimplentes.sort(key=lambda x: x.get('ym', ''), reverse=True)
@@ -486,6 +502,9 @@ class PagamentosService:
                 # Filtrar apenas status devedor
                 if pagamento.get('status') == 'devedor':
                     devedores.append(pagamento)
+
+            if should_apply_operational_scope():
+                devedores = [p for p in devedores if pagamento_is_operational(p)]
             
             # Ordenar por ym (mais recente primeiro)
             devedores.sort(key=lambda x: x.get('ym', ''), reverse=True)
@@ -559,6 +578,8 @@ class PagamentosService:
             bool: True se deletado com sucesso
         """
         try:
+            ensure_writable("deletar pagamento")
+
             # Verificar se existe
             if not self.buscar_pagamento(pagamento_id):
                 raise ValueError(f"Pagamento não encontrado: {pagamento_id}")
@@ -648,6 +669,9 @@ class PagamentosService:
                 pagamento = doc.to_dict()
                 pagamento['id'] = doc.id
                 pagamentos.append(pagamento)
+
+            if should_apply_operational_scope():
+                pagamentos = [p for p in pagamentos if pagamento_is_operational(p)]
             
             # Ordenar por ym (mais recente primeiro)
             pagamentos.sort(key=lambda x: x.get('ym', ''), reverse=True)

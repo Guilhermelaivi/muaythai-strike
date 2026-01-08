@@ -8,6 +8,7 @@ from datetime import datetime
 import streamlit as st
 from google.cloud.firestore_v1 import SERVER_TIMESTAMP
 from src.utils.firebase_config import FirebaseConfig
+from src.utils.readonly_guard import ensure_writable
 
 class TurmasService:
     """Serviço para operações CRUD de Turmas"""
@@ -40,6 +41,8 @@ class TurmasService:
             Exception: Se houver erro na criação
         """
         try:
+            ensure_writable("criar turma")
+
             # Validar dados obrigatórios
             if 'nome' not in dados_turma or not dados_turma['nome'].strip():
                 raise ValueError("Nome da turma é obrigatório")
@@ -148,6 +151,7 @@ class TurmasService:
             bool: True se atualizado com sucesso
         """
         try:
+            ensure_writable("atualizar turma")
             # Adicionar timestamp de atualização
             dados_atualizacao['updatedAt'] = SERVER_TIMESTAMP
             
@@ -171,6 +175,7 @@ class TurmasService:
             bool: True se excluído com sucesso
         """
         try:
+            ensure_writable("excluir turma")
             if exclusao_logica:
                 # Exclusão lógica - apenas desativa
                 self.collection.document(turma_id).update({

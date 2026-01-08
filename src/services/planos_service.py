@@ -8,6 +8,7 @@ from datetime import datetime
 import streamlit as st
 from google.cloud.firestore_v1 import SERVER_TIMESTAMP
 from src.utils.firebase_config import FirebaseConfig
+from src.utils.readonly_guard import ensure_writable
 
 class PlanosService:
     """Serviço para operações CRUD de Planos"""
@@ -32,6 +33,7 @@ class PlanosService:
             Exception: Se houver erro na criação
         """
         try:
+            ensure_writable("criar plano")
             # Validar dados obrigatórios
             self._validar_dados_obrigatorios(dados_plano)
             
@@ -130,6 +132,7 @@ class PlanosService:
             bool: True se atualização foi bem-sucedida
         """
         try:
+            ensure_writable("atualizar plano")
             # Preparar dados para atualização
             update_data = self._preparar_dados_atualizacao(dados_atualizacao)
             
@@ -156,6 +159,7 @@ class PlanosService:
             bool: True se inativação foi bem-sucedida
         """
         try:
+            ensure_writable("inativar plano")
             update_data = {
                 'ativo': False,
                 'updatedAt': SERVER_TIMESTAMP
@@ -180,6 +184,7 @@ class PlanosService:
             bool: True se ativação foi bem-sucedida
         """
         try:
+            ensure_writable("ativar plano")
             update_data = {
                 'ativo': True,
                 'updatedAt': SERVER_TIMESTAMP

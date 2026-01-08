@@ -203,6 +203,14 @@ def main():
         # Inicializar página padrão se não existir
         if 'current_page' not in st.session_state:
             st.session_state.current_page = "🏠 Dashboard"
+
+        # Modo de dados (operacional vs histórico)
+        if 'data_mode' not in st.session_state:
+            st.session_state.data_mode = 'operacional'
+
+        # Guard rail: histórico é somente dashboard
+        if st.session_state.data_mode == 'historico' and st.session_state.current_page != "🏠 Dashboard":
+            st.session_state.current_page = "🏠 Dashboard"
         
         with st.sidebar:
             st.markdown("### 📋 Navegação")
@@ -217,45 +225,59 @@ def main():
             
             # Página principal - sempre visível
             st.markdown("#### Principal")
-            if st.button("🏠 Dashboard", use_container_width=True, 
+            if st.button("🏠 Dashboard (2026+)", use_container_width=True, 
                         type="primary" if st.session_state.current_page == "🏠 Dashboard" else "secondary"):
                 st.session_state.current_page = "🏠 Dashboard"
+                st.session_state.data_mode = 'operacional'
                 st.rerun()
             
             st.divider()
             
             # Páginas mais utilizadas
-            st.markdown("#### Mais Utilizados")
-            
-            if st.button("👥 Alunos", use_container_width=True,
-                        type="primary" if st.session_state.current_page == "👥 Alunos" else "secondary"):
-                st.session_state.current_page = "👥 Alunos"
-                st.rerun()
-            
-            if st.button("✅ Presenças", use_container_width=True,
-                        type="primary" if st.session_state.current_page == "✅ Presenças" else "secondary"):
-                st.session_state.current_page = "✅ Presenças"
-                st.rerun()
-            
-            if st.button("💰 Pagamentos", use_container_width=True,
-                        type="primary" if st.session_state.current_page == "💰 Pagamentos" else "secondary"):
-                st.session_state.current_page = "💰 Pagamentos"
-                st.rerun()
-            
+            if st.session_state.data_mode != 'historico':
+                st.markdown("#### Mais Utilizados")
+                
+                if st.button("👥 Alunos", use_container_width=True,
+                            type="primary" if st.session_state.current_page == "👥 Alunos" else "secondary"):
+                    st.session_state.current_page = "👥 Alunos"
+                    st.rerun()
+                
+                if st.button("✅ Presenças", use_container_width=True,
+                            type="primary" if st.session_state.current_page == "✅ Presenças" else "secondary"):
+                    st.session_state.current_page = "✅ Presenças"
+                    st.rerun()
+                
+                if st.button("💰 Pagamentos", use_container_width=True,
+                            type="primary" if st.session_state.current_page == "💰 Pagamentos" else "secondary"):
+                    st.session_state.current_page = "💰 Pagamentos"
+                    st.rerun()
+                
+                st.divider()
+                
+                # Páginas auxiliares
+                st.markdown("#### Outros")
+                
+                if st.button("👨‍👩‍👧‍👦 Turmas", use_container_width=True,
+                            type="primary" if st.session_state.current_page == "👨‍👩‍👧‍👦 Turmas" else "secondary"):
+                    st.session_state.current_page = "👨‍👩‍👧‍👦 Turmas"
+                    st.rerun()
+                
+                if st.button("🥋 Graduações", use_container_width=True,
+                            type="primary" if st.session_state.current_page == "🥋 Graduações" else "secondary"):
+                    st.session_state.current_page = "🥋 Graduações"
+                    st.rerun()
+            else:
+                st.info("Modo histórico ativo: apenas consulta")
+
             st.divider()
-            
-            # Páginas auxiliares
-            st.markdown("#### Outros")
-            
-            if st.button("👨‍👩‍👧‍👦 Turmas", use_container_width=True,
-                        type="primary" if st.session_state.current_page == "👨‍👩‍👧‍👦 Turmas" else "secondary"):
-                st.session_state.current_page = "👨‍👩‍👧‍👦 Turmas"
-                st.rerun()
-            
-            if st.button("🥋 Graduações", use_container_width=True,
-                        type="primary" if st.session_state.current_page == "🥋 Graduações" else "secondary"):
-                st.session_state.current_page = "🥋 Graduações"
-                st.rerun()
+
+            # Histórico - somente leitura (menos usado, fica no final)
+            with st.expander("📚 Histórico (somente leitura)", expanded=False):
+                st.caption("Dashboard de 2024/2025 para consulta")
+                if st.button("Abrir histórico", use_container_width=True):
+                    st.session_state.current_page = "🏠 Dashboard"
+                    st.session_state.data_mode = 'historico'
+                    st.rerun()
         
         page = st.session_state.current_page
         log_step("Construção da sidebar e navegação", step_start)
@@ -269,7 +291,8 @@ def main():
     try:
         if page == "🏠 Dashboard":
             from pages.dashboard import show_dashboard
-            show_dashboard()
+            mode = st.session_state.get('data_mode', 'operacional')
+            show_dashboard(mode=mode)
         elif page == "👥 Alunos":
             from pages.alunos import show_alunos
             show_alunos()

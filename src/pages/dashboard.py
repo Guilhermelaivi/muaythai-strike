@@ -4,7 +4,7 @@ Página Dashboard - KPIs e visão geral
 
 import streamlit as st
 from datetime import datetime, date
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 import plotly.express as px
 import pandas as pd
 from src.utils.notifications import NotificationService
@@ -14,13 +14,15 @@ from src.services.presencas_service import PresencasService
 from src.services.graduacoes_service import GraduacoesService
 from src.utils.cache_service import get_cache_manager
 
-def show_dashboard():
+def show_dashboard(mode: Optional[str] = None, forced_year: Optional[int] = None):
     """Exibe o dashboard principal com KPIs"""
     
     st.markdown("## 📊 Dashboard")
     
-    # Detectar período dos dados reais
-    periodo_disponivel = _get_available_period()
+    effective_mode = mode or st.session_state.get('data_mode', 'operacional')
+
+    if effective_mode == 'historico':
+        st.caption("Histórico 2024/2025 (somente leitura)")
     
     # Seletor de mês (dinâmico baseado na data atual)
     col1, col2, col3 = st.columns([2, 2, 6])
@@ -28,16 +30,19 @@ def show_dashboard():
     with col1:
         current_year = datetime.now().year
         current_month = datetime.now().month
-        
-        # Anos disponíveis: desde o ano dos dados até o ano atual
-        if periodo_disponivel['anos']:
-            min_year = min(periodo_disponivel['anos'])
-            anos_disponiveis = list(range(min_year, current_year + 1))
+
+        if effective_mode == 'historico':
+            anos_disponiveis = [2024, 2025]
         else:
-            anos_disponiveis = [current_year]
-        
-        # Ano padrão é o atual
-        default_year_index = len(anos_disponiveis) - 1
+            # Operação a partir de 2026
+            start_year = 2026
+            anos_disponiveis = list(range(start_year, max(start_year, current_year) + 1))
+
+        # Ano padrão
+        if forced_year in anos_disponiveis:
+            default_year_index = anos_disponiveis.index(forced_year)
+        else:
+            default_year_index = len(anos_disponiveis) - 1
         
         selected_year = st.selectbox(
             "Ano:", 
@@ -86,7 +91,19 @@ def show_dashboard():
     st.markdown(f"### 📅 Relatório: {periodo_titulo}")
     
     # Obter dados reais dos serviços (modificado para suportar consulta anual)
-    dados_reais = _get_real_data(ym, is_annual_view)
+    dados_reais = _get_real_data(ym, is_annual_view, mode=effective_mode) or {}
+    dados_reais = {
+        'receita': 0.0,
+        'devedores': 0,
+        'valor_devedores': 0.0,
+        'inadimplentes': 0,
+        'valor_inadimplentes': 0.0,
+        'ativos': 0,
+        'percentual_ativos': 0,
+        'media_presencas_dia': 0.0,
+        'total_presencas': 0,
+        **dados_reais,
+    }
     
     # Métricas principais - 5 colunas para separar A Cobrar e Inadimplentes
     col1, col2, col3, col4, col5 = st.columns(5)
@@ -214,7 +231,7 @@ def show_dashboard():
         # Graduações por nível
         try:
             graduacoes_service = GraduacoesService()
-            stats_grad = graduacoes_service.obter_estatisticas_graduacoes()
+            stats_grad = graduacoes_service.obter_estatisticas_graduacoes(mode=effective_mode)
             
             if stats_grad['distribuicao_por_nivel']:
                 # Limitar a top 8 graduações para visualização
@@ -428,7 +445,7 @@ def _get_available_period():
             'meses_por_ano': {current_year: {datetime.now().month}}
         }
 
-def _get_real_data(ym: str, is_annual_view: bool = False) -> Dict[str, Any]:
+def _get_real_data(ym: str, is_annual_view: bool = False, mode: str = 'operacional') -> Dict[str, Any]:
     """Obtém dados reais dos serviços para o dashboard com cache"""
     try:
         # Inicializar serviços e cache
@@ -437,8 +454,27 @@ def _get_real_data(ym: str, is_annual_view: bool = False) -> Dict[str, Any]:
         presencas_service = PresencasService()
         cache_manager = get_cache_manager()
         
+        # Determinar ano-alvo
+        try:
+            target_year = int(str(ym).split('-')[0])
+        except Exception:
+            target_year = datetime.now().year
+
         # Dados de alunos (com cache)
         alunos = cache_manager.get_alunos_cached(alunos_service)
+
+        # Para operação (2026+), apartar base ignorando legados
+        if mode != 'historico':
+            def _is_2026_plus(aluno: Dict[str, Any]) -> bool:
+                ativo_desde = aluno.get('ativoDesde')
+                if not ativo_desde or not isinstance(ativo_desde, str):
+                    return False
+                try:
+                    return int(ativo_desde[:4]) >= 2026
+                except Exception:
+                    return False
+
+            alunos = [a for a in alunos if _is_2026_plus(a)]
         total_alunos = len(alunos)
         alunos_ativos = len([a for a in alunos if a.get('status') == 'ativo'])
         alunos_inativos = total_alunos - alunos_ativos
