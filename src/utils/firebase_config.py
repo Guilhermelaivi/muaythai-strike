@@ -43,9 +43,21 @@ class FirebaseConfig:
             if "firebase" in st.secrets:
                 if "credentials_path" in st.secrets["firebase"]:
                     cred_path = st.secrets["firebase"]["credentials_path"]
-                    if os.path.exists(cred_path):
-                        self.cred = credentials.Certificate(cred_path)
-                        return
+                    # Suporta caminho relativo (raiz do projeto) e absoluto
+                    cred_candidates = [
+                        cred_path,
+                        str((Path(__file__).resolve().parents[2] / cred_path).resolve()),
+                    ]
+
+                    for candidate in cred_candidates:
+                        if candidate and os.path.exists(candidate):
+                            self.cred = credentials.Certificate(candidate)
+                            return
+
+                    raise ValueError(
+                        f"Arquivo de credenciais não encontrado. credentials_path='{cred_path}'. "
+                        f"Tentativas: {cred_candidates}"
+                    )
                 else:
                     # Usando credenciais diretamente do secrets
                     firebase_secrets = dict(st.secrets["firebase"])
