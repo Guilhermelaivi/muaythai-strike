@@ -13,6 +13,12 @@ from src.utils.operational_scope import should_apply_operational_scope, aluno_is
 
 class AlunosService:
     """Serviço para operações CRUD de Alunos"""
+
+    @staticmethod
+    def _normalize_nome(nome: Any) -> str:
+        """Normaliza nome para sempre persistir algo não-vazio."""
+        value = str(nome).strip() if nome is not None else ""
+        return value if value else "(Sem nome)"
     
     def __init__(self):
         """Inicializa o serviço com conexão Firestore"""
@@ -47,34 +53,35 @@ class AlunosService:
             # Se recebeu um dicionário, extrair os dados
             if isinstance(dados_aluno_ou_nome, dict):
                 dados = dados_aluno_ou_nome
-                nome = dados.get('nome', '')
+                nome = self._normalize_nome(dados.get('nome', ''))
                 telefone = dados.get('contato', {}).get('telefone', '') if isinstance(dados.get('contato'), dict) else ''
                 email = dados.get('contato', {}).get('email', '') if isinstance(dados.get('contato'), dict) else ''
                 endereco = dados.get('endereco', '')
                 vencimento_dia = dados.get('vencimentoDia', 5)
                 turma = dados.get('turma', '')
                 plano_id = dados.get('planoId', '')
+                status = dados.get('status', 'ativo')
+                ativo_desde = dados.get('ativoDesde', date.today().strftime('%Y-%m-%d'))
             else:
                 # Método antigo - dados_aluno_ou_nome é o nome
-                nome = dados_aluno_ou_nome
-            # Validar dados obrigatórios
-            if not nome or not nome.strip():
-                raise ValueError("Nome é obrigatório")
+                nome = self._normalize_nome(dados_aluno_ou_nome)
+                status = 'ativo'
+                ativo_desde = date.today().strftime('%Y-%m-%d')
             
             if not (1 <= vencimento_dia <= 28):
                 raise ValueError("Dia de vencimento deve estar entre 1 e 28")
             
             # Preparar dados do aluno
             aluno_data = {
-                'nome': nome.strip(),
+                'nome': nome,
                 'contato': {
                     'telefone': telefone.strip() if telefone else "",
                     'email': email.strip() if email else ""
                 },
                 'endereco': endereco.strip() if endereco else "",
-                'status': 'ativo',
+                'status': status if status in ['ativo', 'inativo'] else 'ativo',
                 'vencimentoDia': vencimento_dia,
-                'ativoDesde': date.today().strftime('%Y-%m-%d'),
+                'ativoDesde': ativo_desde if ativo_desde else date.today().strftime('%Y-%m-%d'),
                 'turma': turma.strip() if turma else "",
                 'graduacao': 'Sem graduação',
                 'createdAt': SERVER_TIMESTAMP,
@@ -193,6 +200,9 @@ class AlunosService:
 
             # Preparar dados para atualização
             update_data = self._preparar_dados_atualizacao(dados_atualizacao)
+
+            if 'nome' in update_data:
+                update_data['nome'] = self._normalize_nome(update_data.get('nome'))
             
             # Adicionar timestamp de atualização
             update_data['updatedAt'] = SERVER_TIMESTAMP

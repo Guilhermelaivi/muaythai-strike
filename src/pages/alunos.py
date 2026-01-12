@@ -410,17 +410,17 @@ def _mostrar_formulario_novo_aluno(alunos_service: AlunosService):
         col1, col2 = st.columns(2)
         
         with col1:
-            nome = st.text_input("👤 Nome Completo *", placeholder="Digite o nome completo")
+            nome = st.text_input("👤 Nome Completo (opcional)", placeholder="Digite o nome completo")
             vencimento_dia = st.selectbox(
-                "📅 Dia do Vencimento *", 
+                "📅 Dia do Vencimento (opcional)", 
                 options=[10, 15, 25],
                 index=1  # 15 como padrão
             )
         
         with col2:
-            status = st.selectbox("📊 Status *", options=["ativo", "inativo"], index=0)
+            status = st.selectbox("📊 Status (opcional)", options=["ativo", "inativo"], index=0)
             ativo_desde = st.date_input(
-                "📆 Ativo Desde *", 
+                "📆 Ativo Desde (opcional)", 
                 value=date.today(),
                 min_value=date(2024, 1, 1),
                 max_value=date.today(),
@@ -444,24 +444,24 @@ def _mostrar_formulario_novo_aluno(alunos_service: AlunosService):
             
             with col1:
                 responsavel_nome = st.text_input(
-                    "👤 Nome Completo do Responsável *",
+                    "👤 Nome Completo do Responsável (opcional)",
                     placeholder="Digite o nome completo",
                     key="resp_nome_novo"
                 )
                 responsavel_cpf = st.text_input(
-                    "🆔 CPF do Responsável *",
+                    "🆔 CPF do Responsável (opcional)",
                     placeholder="000.000.000-00",
                     key="resp_cpf_novo"
                 )
             
             with col2:
                 responsavel_rg = st.text_input(
-                    "🪪 RG do Responsável *",
+                    "🪪 RG do Responsável (opcional)",
                     placeholder="00.000.000-0",
                     key="resp_rg_novo"
                 )
                 responsavel_telefone = st.text_input(
-                    "📱 Telefone do Responsável *",
+                    "📱 Telefone do Responsável (opcional)",
                     placeholder="(11) 99999-9999",
                     key="resp_tel_novo"
                 )
@@ -502,17 +502,18 @@ def _mostrar_formulario_novo_aluno(alunos_service: AlunosService):
                 turmas_opcoes = ["⚠️ Erro ao carregar turmas"]
                 turmas_nomes = []
             
+            turma = ""
             if turmas_nomes:
+                turmas_opcoes_exibicao = ["(Não informar agora)"] + turmas_opcoes
+                turmas_nomes_valores = [""] + turmas_nomes
                 turma_selecionada_idx = st.selectbox(
-                    "🥋 Turma *", 
-                    options=range(len(turmas_opcoes)),
-                    format_func=lambda x: turmas_opcoes[x],
+                    "🥋 Turma (opcional)",
+                    options=range(len(turmas_opcoes_exibicao)),
+                    format_func=lambda x: turmas_opcoes_exibicao[x],
                     index=0,
-                    help="Selecione a turma do aluno"
+                    help="Você pode deixar em branco e preencher depois."
                 )
-                turma = turmas_nomes[turma_selecionada_idx]
-            else:
-                turma = None
+                turma = turmas_nomes_valores[turma_selecionada_idx]
         
         # Campo de observações
         st.markdown("#### 📝 Observações")
@@ -531,37 +532,13 @@ def _mostrar_formulario_novo_aluno(alunos_service: AlunosService):
         
         # Processar formulário
         if submitted:
-            # Validações
-            if not nome or not nome.strip():
-                st.error("❌ Nome é obrigatório!")
-                return
-            
-            if not turma or not turma.strip():
-                st.error("❌ Turma é obrigatória!")
-                return
-            
-            # Validar dados do responsável se marcado
-            if st.session_state.possui_responsavel_novo:
-                if not responsavel_nome or not responsavel_nome.strip():
-                    st.error("❌ Nome do responsável é obrigatório!")
-                    return
-                if not responsavel_cpf or not responsavel_cpf.strip():
-                    st.error("❌ CPF do responsável é obrigatório!")
-                    return
-                if not responsavel_rg or not responsavel_rg.strip():
-                    st.error("❌ RG do responsável é obrigatório!")
-                    return
-                if not responsavel_telefone or not responsavel_telefone.strip():
-                    st.error("❌ Telefone do responsável é obrigatório!")
-                    return
-            
             # Preparar dados
             dados_aluno = {
-                'nome': nome.strip(),
+                'nome': nome.strip() if nome else "",
                 'status': status,
                 'vencimentoDia': vencimento_dia,
-                'ativoDesde': ativo_desde.strftime('%Y-%m-%d'),
-                'turma': turma.strip()
+                'ativoDesde': ativo_desde.strftime('%Y-%m-%d') if ativo_desde else "",
+                'turma': turma.strip() if turma else ""
             }
             
             # Adicionar contato se preenchido
@@ -582,20 +559,25 @@ def _mostrar_formulario_novo_aluno(alunos_service: AlunosService):
             if observacoes and observacoes.strip():
                 dados_aluno['observacoes'] = observacoes.strip()
             
-            # Adicionar dados do responsável se preenchido
+            # Adicionar dados do responsável apenas se algum campo foi preenchido
             if st.session_state.possui_responsavel_novo:
-                dados_aluno['responsavel'] = {
-                    'nome': responsavel_nome.strip(),
-                    'cpf': responsavel_cpf.strip(),
-                    'rg': responsavel_rg.strip(),
-                    'telefone': responsavel_telefone.strip()
-                }
+                responsavel_data = {}
+                if responsavel_nome and responsavel_nome.strip():
+                    responsavel_data['nome'] = responsavel_nome.strip()
+                if responsavel_telefone and responsavel_telefone.strip():
+                    responsavel_data['telefone'] = responsavel_telefone.strip()
+                if responsavel_cpf and responsavel_cpf.strip():
+                    responsavel_data['cpf'] = responsavel_cpf.strip()
+                if responsavel_rg and responsavel_rg.strip():
+                    responsavel_data['rg'] = responsavel_rg.strip()
+                if responsavel_data:
+                    dados_aluno['responsavel'] = responsavel_data
             
             # Cadastrar aluno
             try:
                 aluno_id = alunos_service.criar_aluno(dados_aluno)
                 st.session_state.aluno_cadastrado = {
-                    'nome': nome,
+                    'nome': (nome.strip() if nome and nome.strip() else "(Sem nome)"),
                     'id': aluno_id
                 }
                 # Limpar checkbox ao cadastrar
@@ -899,7 +881,7 @@ def _mostrar_formulario_editar_aluno(alunos_service: AlunosService):
             
             with col1:
                 nome = st.text_input(
-                    "👤 Nome Completo *", 
+                    "👤 Nome Completo (opcional)", 
                     value=aluno.get('nome', ''),
                     placeholder="Digite o nome completo"
                 )
@@ -915,14 +897,14 @@ def _mostrar_formulario_editar_aluno(alunos_service: AlunosService):
                         venc_atual = 25
                 
                 vencimento_dia = st.selectbox(
-                    "📅 Dia do Vencimento *", 
+                    "📅 Dia do Vencimento (opcional)", 
                     options=[10, 15, 25],
                     index=[10, 15, 25].index(venc_atual)
                 )
             
             with col2:
                 status = st.selectbox(
-                    "📊 Status *", 
+                    "📊 Status (opcional)", 
                     options=["ativo", "inativo"], 
                     index=0 if aluno.get('status') == 'ativo' else 1
                 )
@@ -937,7 +919,7 @@ def _mostrar_formulario_editar_aluno(alunos_service: AlunosService):
                     ativo_desde_date = date.today()
                 
                 ativo_desde = st.date_input(
-                    "📆 Ativo Desde *", 
+                    "📆 Ativo Desde (opcional)", 
                     value=ativo_desde_date,
                     min_value=date(2024, 1, 1),
                     max_value=date.today(),
@@ -978,13 +960,13 @@ def _mostrar_formulario_editar_aluno(alunos_service: AlunosService):
                 
                 with col1:
                     responsavel_nome = st.text_input(
-                        "👤 Nome Completo do Responsável *",
+                        "👤 Nome Completo do Responsável (opcional)",
                         value=responsavel_atual.get('nome', ''),
                         placeholder="Digite o nome completo",
                         key="resp_nome_edit"
                     )
                     responsavel_cpf = st.text_input(
-                        "🆔 CPF do Responsável *",
+                        "🆔 CPF do Responsável (opcional)",
                         value=responsavel_atual.get('cpf', ''),
                         placeholder="000.000.000-00",
                         key="resp_cpf_edit"
@@ -992,13 +974,13 @@ def _mostrar_formulario_editar_aluno(alunos_service: AlunosService):
                 
                 with col2:
                     responsavel_rg = st.text_input(
-                        "🪪 RG do Responsável *",
+                        "🪪 RG do Responsável (opcional)",
                         value=responsavel_atual.get('rg', ''),
                         placeholder="00.000.000-0",
                         key="resp_rg_edit"
                     )
                     responsavel_telefone = st.text_input(
-                        "📱 Telefone do Responsável *",
+                        "📱 Telefone do Responsável (opcional)",
                         value=responsavel_atual.get('telefone', ''),
                         placeholder="(11) 99999-9999",
                         key="resp_tel_edit"
@@ -1095,30 +1077,12 @@ def _mostrar_formulario_editar_aluno(alunos_service: AlunosService):
             
             # Processar formulário
             if submitted:
-                # Validações
-                if not nome or not nome.strip():
-                    st.error("❌ Nome é obrigatório!")
-                    return
-                
-                # Validar dados do responsável se marcado
+                # Dados do responsável são opcionais
                 chave_estado = f'possui_responsavel_edit_{aluno_id}'
-                if st.session_state.get(chave_estado, False):
-                    if not responsavel_nome or not responsavel_nome.strip():
-                        st.error("❌ Nome do responsável é obrigatório!")
-                        return
-                    if not responsavel_cpf or not responsavel_cpf.strip():
-                        st.error("❌ CPF do responsável é obrigatório!")
-                        return
-                    if not responsavel_rg or not responsavel_rg.strip():
-                        st.error("❌ RG do responsável é obrigatório!")
-                        return
-                    if not responsavel_telefone or not responsavel_telefone.strip():
-                        st.error("❌ Telefone do responsável é obrigatório!")
-                        return
                 
                 # Preparar dados de atualização
                 dados_atualizacao = {
-                    'nome': nome.strip(),
+                    'nome': nome.strip() if nome else "",
                     'status': status,
                     'vencimentoDia': vencimento_dia,
                     'ativoDesde': ativo_desde.strftime('%Y-%m-%d')
@@ -1150,12 +1114,16 @@ def _mostrar_formulario_editar_aluno(alunos_service: AlunosService):
                 # Adicionar ou remover dados do responsável
                 chave_estado = f'possui_responsavel_edit_{aluno_id}'
                 if st.session_state.get(chave_estado, False):
-                    dados_atualizacao['responsavel'] = {
-                        'nome': responsavel_nome.strip(),
-                        'cpf': responsavel_cpf.strip(),
-                        'rg': responsavel_rg.strip(),
-                        'telefone': responsavel_telefone.strip()
-                    }
+                    responsavel_data = {}
+                    if responsavel_nome and responsavel_nome.strip():
+                        responsavel_data['nome'] = responsavel_nome.strip()
+                    if responsavel_telefone and responsavel_telefone.strip():
+                        responsavel_data['telefone'] = responsavel_telefone.strip()
+                    if responsavel_cpf and responsavel_cpf.strip():
+                        responsavel_data['cpf'] = responsavel_cpf.strip()
+                    if responsavel_rg and responsavel_rg.strip():
+                        responsavel_data['rg'] = responsavel_rg.strip()
+                    dados_atualizacao['responsavel'] = responsavel_data if responsavel_data else None
                 else:
                     # Se desmarcou, remover dados do responsável
                     dados_atualizacao['responsavel'] = None
