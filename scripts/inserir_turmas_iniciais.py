@@ -1,6 +1,6 @@
 """
 Script para inserir as turmas iniciais no Firestore
-Turmas padrão do Dojo:
+Turmas padrão - Spirith Muay thai:
 - KIDS: 18h às 19h10
 - ADULTA (Matutino): 07h20 às 08h30
 - ADULTA (Noturno): 19h20 às 20h30

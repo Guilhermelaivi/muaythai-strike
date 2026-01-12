@@ -72,75 +72,68 @@ class FirebaseConfig:
             # Debug das credenciais
             google_creds = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
             project_id = os.getenv("FIREBASE_PROJECT_ID")
-            
+
             if not google_creds:
                 raise ValueError("GOOGLE_APPLICATION_CREDENTIALS não encontrada")
-            
+
             # Log de debug (sem expor credenciais)
             print(f"🔧 Tamanho das credenciais: {len(google_creds)} chars")
             print(f"🔧 Project ID: {project_id}")
-            
+
             # Método 1: Se é um caminho de arquivo
             if os.path.exists(google_creds):
                 self.cred = credentials.Certificate(google_creds)
                 return
-            
+
             # Método 2: JSON string - com validação robusta
+            google_creds_clean = google_creds.strip()
             try:
-                # Limpar string (remover espaços, quebras de linha extras)
-                google_creds_clean = google_creds.strip()
-                
-                # Tentar parse do JSON
                 cred_dict = json.loads(google_creds_clean)
-                
-                # Validar keys obrigatórias
-                required_keys = ["type", "project_id", "private_key_id", "private_key", "client_email"]
-                missing_keys = [key for key in required_keys if key not in cred_dict]
-                
-                if missing_keys:
-                    raise ValueError(f"Chaves obrigatórias ausentes no JSON: {missing_keys}")
-                
-                # Garantir project_id consistente
-                if project_id and cred_dict.get("project_id") != project_id:
-                    print(f"⚠️ Project ID inconsistente. Usando: {project_id}")
-                    cred_dict["project_id"] = project_id
-                
-                self.cred = credentials.Certificate(cred_dict)
-                print("✅ Credenciais Firebase carregadas com sucesso!")
-                return
-                
             except json.JSONDecodeError as e:
                 # Diagnóstico detalhado do erro JSON
                 error_context = ""
-                if e.pos < len(google_creds):
+                if e.pos < len(google_creds_clean):
                     start = max(0, e.pos - 30)
-                    end = min(len(google_creds), e.pos + 30)
-                    error_context = google_creds[start:end]
-                
-                raise ValueError(f"JSON inválido na posição {e.pos}: {e.msg}. Contexto: {error_context}")
-                
-            raise ValueError("Não foi possível carregar credenciais de nenhuma fonte")
-            
-        except json.JSONDecodeError as e:
-            raise ValueError(f"Erro ao decodificar credenciais JSON: {e}")
-        except Exception as e:
-            raise ValueError(f"Erro ao configurar credenciais Firebase: {e}")
-        
+                    end = min(len(google_creds_clean), e.pos + 30)
+                    error_context = google_creds_clean[start:end]
+
+                raise ValueError(
+                    f"JSON inválido na posição {e.pos}: {e.msg}. Contexto: {error_context}"
+                )
+
+            # Validar keys obrigatórias
+            required_keys = ["type", "project_id", "private_key_id", "private_key", "client_email"]
+            missing_keys = [key for key in required_keys if key not in cred_dict]
+
+            if missing_keys:
+                raise ValueError(f"Chaves obrigatórias ausentes no JSON: {missing_keys}")
+
+            # Garantir project_id consistente
+            if project_id and cred_dict.get("project_id") != project_id:
+                print(f"⚠️ Project ID inconsistente. Usando: {project_id}")
+                cred_dict["project_id"] = project_id
+
+            self.cred = credentials.Certificate(cred_dict)
+            print("✅ Credenciais Firebase carregadas com sucesso!")
+            return
+
         except Exception as e:
             st.error(f"❌ Erro ao configurar credenciais: {str(e)}")
-            st.error("""
+            st.error(
+                """
             **Configuração necessária:**
             1. Adicione as credenciais em `.streamlit/secrets.toml`
             2. Ou configure GOOGLE_APPLICATION_CREDENTIALS
-            
+
             Exemplo secrets.toml:
             ```toml
             [firebase]
             credentials_path = "caminho/para/service-account-key.json"
             project_id = "seu-project-id"
             ```
-            """)
-            raise e
+            """
+            )
+            raise
     
     def is_connected(self) -> bool:
         """Verifica se a conexão com Firestore está ativa"""

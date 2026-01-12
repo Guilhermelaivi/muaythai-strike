@@ -5,6 +5,9 @@ Gerenciador de Autenticação simples e funcional
 import streamlit as st
 from typing import Optional, Dict, Any
 import bcrypt
+from pathlib import Path
+
+from utils.ui import render_brand_header
 
 class AuthManager:
     """Classe simples para gerenciar autenticação"""
@@ -31,7 +34,7 @@ class AuthManager:
         # Fallback para variáveis de ambiente (produção)
         try:
             # Configurar credenciais do admin a partir de env vars
-            admin_email = os.getenv("STREAMLIT_ADMIN_EMAIL", "admin@dojo.com")
+            admin_email = os.getenv("STREAMLIT_ADMIN_EMAIL", "admin@spirith.com")
             admin_name = os.getenv("STREAMLIT_ADMIN_NAME", "Administrador")
             admin_password = os.getenv("STREAMLIT_ADMIN_PASSWORD_HASH", "$2b$12$O1V01ndVPyE4mEXcDG3QqeIaIKLh5WG.9dxzCiPZ1uKJe41H9VxkC")
             
@@ -64,53 +67,68 @@ class AuthManager:
     
     def show_login(self) -> None:
         """Exibe o formulário de login"""
-        st.markdown("""
-        <div style="text-align: center; padding: 2rem;">
-            <h1>🥋 Dojo Management System</h1>
-            <p>Faça login para acessar o sistema</p>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        # Container centralizado para login
-        col1, col2, col3 = st.columns([1, 2, 1])
-        
+        # Centralizar o login e evitar “peças soltas”
+        st.markdown(
+            """
+            <style>
+            /* Login: esconder sidebar antes do auth */
+            section[data-testid="stSidebar"], div[data-testid="collapsedControl"] { display: none !important; }
+
+            /* Ajustes de espaçamento do topo */
+            .block-container { padding-top: 2rem; }
+
+            /* Botão de submit mais consistente */
+            div.stButton > button, div.stFormSubmitButton > button {
+                border-radius: 10px;
+                padding: 0.75rem 1rem;
+                font-weight: 600;
+            }
+            </style>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        col1, col2, col3 = st.columns([1.1, 1.3, 1.1])
+
         with col2:
-            with st.container():
-                st.markdown("""
-                <div style="background-color: #f8f9fa; padding: 2rem; border-radius: 10px; border: 1px solid #dee2e6;">
-                """, unsafe_allow_html=True)
-                
-                st.markdown("### 🔐 Acesso ao Sistema")
-                
-                # Formulário simples e funcional
-                with st.form("login_form"):
-                    username = st.text_input("👤 Usuário", placeholder="Digite seu usuário")
-                    password = st.text_input("🔑 Senha", type="password", placeholder="Digite sua senha")
-                    
-                    # Botão sempre disponível
-                    submit = st.form_submit_button(
-                        "🚪 Entrar", 
-                        use_container_width=True, 
-                        type="primary"
-                    )
-                    
-                    # Processar submissão
-                    if submit:
-                        # Validar campos preenchidos
-                        if not username or not password:
-                            st.error("❌ Por favor, preencha usuário e senha")
+            # Branding: usar pranch.png (mais “hero”) no login
+            root_dir = Path(__file__).resolve().parents[2]
+            pranch_path = root_dir / "pranch.png"
+
+            render_brand_header(
+                title="Spirith Muay thai",
+                subtitle="Faça login para acessar o sistema",
+                logo_path=pranch_path if pranch_path.exists() else (root_dir / "elefantecontorno.png"),
+                logo_width_px=640,
+                container_class="brand-header-login",
+            )
+
+            st.markdown("### 🔐 Acesso ao Sistema")
+            st.caption("Use seu usuário e senha para entrar")
+
+            # Formulário simples e funcional
+            with st.form("login_form", clear_on_submit=False):
+                username = st.text_input("Usuário", placeholder="Digite seu usuário")
+                password = st.text_input("Senha", type="password", placeholder="Digite sua senha")
+
+                submit = st.form_submit_button(
+                    "Entrar",
+                    use_container_width=True,
+                    type="primary",
+                )
+
+                if submit:
+                    if not username or not password:
+                        st.error("❌ Por favor, preencha usuário e senha")
+                    else:
+                        if self._validate_credentials(username, password):
+                            st.session_state['authentication_status'] = True
+                            st.session_state['name'] = self.credentials['usernames'][username]['name']
+                            st.session_state['username'] = username
+                            st.success("✅ Login realizado com sucesso!")
+                            st.rerun()
                         else:
-                            # Validar credenciais
-                            if self._validate_credentials(username, password):
-                                st.session_state['authentication_status'] = True
-                                st.session_state['name'] = self.credentials['usernames'][username]['name']
-                                st.session_state['username'] = username
-                                st.success("✅ Login realizado com sucesso!")
-                                st.rerun()
-                            else:
-                                st.error("❌ Usuário ou senha incorretos")
-                
-                st.markdown("</div>", unsafe_allow_html=True)
+                            st.error("❌ Usuário ou senha incorretos")
         
         # Informações de desenvolvimento - apenas em ambiente local
         import os
@@ -119,9 +137,12 @@ class AuthManager:
         if debug_mode:
             with st.expander("ℹ️ Informações de Desenvolvimento"):
                 st.info("""
-                **Credenciais de teste:**
+                **Credenciais (modo dev):**
                 - Usuário: `admin`
-                - Senha: `admin123`
+
+                **Senha**
+                - A senha não é exibida aqui (usa bcrypt).
+                - Configure via `.streamlit/secrets.toml` (chave `credentials.usernames.admin.password`) ou via env `STREAMLIT_ADMIN_PASSWORD_HASH`.
                 """)
     
     def _validate_credentials(self, username: str, password: str) -> bool:

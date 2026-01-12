@@ -1,4 +1,4 @@
-# 🚀 Deploy Railway - Dojo Management System
+# 🚀 Deploy Railway - Spirith Muay thai
 
 ## 📋 Configuração Required no Railway
 

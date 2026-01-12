@@ -1,6 +1,6 @@
-# 🥋 Dojo Management System - MVP
+# 🥋 Spirith Muay thai - MVP
 
-Sistema de gestão para academia/dojo de Muay Thai desenvolvido com **Streamlit + Firestore**.
+Sistema de gestão para academia de Muay Thai desenvolvido com **Streamlit + Firestore**.
 
 ## 🎯 Objetivo
 
@@ -53,7 +53,7 @@ pip install -r requirements.txt
 
 ```toml
 [credentials]
-usernames = { admin = { email = "admin@dojo.com", name = "Administrador", password = "$2b$12$SEU_HASH_AQUI" } }
+usernames = { admin = { email = "admin@spirith.com", name = "Administrador", password = "$2b$12$SEU_HASH_AQUI" } }
 
 [cookie]
 name = "dojo_auth_cookie"  

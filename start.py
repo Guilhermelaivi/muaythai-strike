@@ -6,7 +6,6 @@
 import os
 import sys
 import subprocess
-import time
 import signal
 
 # Variável global para controle
@@ -23,14 +22,14 @@ signal.signal(signal.SIGTERM, signal_handler)
 signal.signal(signal.SIGINT, signal_handler)
 
 def main():
-    print("🚀 DOJO MANAGEMENT SYSTEM - Railway Deploy")
+    print("🚀 SPIRITH MUAY THAI - Railway Deploy")
     
     # Obter porta do Railway
     port = os.environ.get('PORT', '8501')
     entry = os.environ.get('ENTRYPOINT', 'app.py')  # Projeto REAL com Firestore
     
-    print(f"� Entry: {entry}")
-    print(f"�📡 Porta (env PORT): {port}")
+    print(f"📄 Entry: {entry}")
+    print(f"📡 Porta (env PORT): {port}")
     
     # Verificar arquivo
     if not os.path.exists(entry):

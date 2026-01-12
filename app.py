@@ -1,5 +1,5 @@
 """
-Sistema de Gestão para Academia/Dojo - MVP
+Sistema de Gestão para Academia - MVP
 Streamlit + Firestore + streamlit-authenticator
 
 Author: GitHub Copilot
@@ -36,7 +36,7 @@ def log_step(step_name, start_time=None):
     return current_time
 
 # Adicionar src ao path para imports
-logger.info("🚀 INICIANDO APLICAÇÃO DOJO MANAGEMENT SYSTEM")
+logger.info("🚀 INICIANDO APLICAÇÃO SPIRITH MUAY THAI")
 start_total = time.time()
 
 step_start = log_step("Configuração de imports")
@@ -49,6 +49,7 @@ step_start = log_step("Imports de módulos locais")
 try:
     from utils.auth import AuthManager
     from utils.firebase_config import FirebaseConfig
+    from utils.ui import render_brand_header
     log_step("Imports de módulos locais", step_start)
 except Exception as e:
     logger.error(f"❌ ERRO nos imports: {str(e)}")
@@ -72,8 +73,8 @@ def main():
     step_start = log_step("Configuração da página Streamlit")
     try:
         st.set_page_config(
-            page_title="Dojo Management System",
-            page_icon="🥋",
+            page_title="Spirith Muay thai",
+            page_icon="elefantecontorno.png",
             layout="wide",
             initial_sidebar_state="expanded"
         )
@@ -88,18 +89,20 @@ def main():
         st.markdown("""
         <style>
         .main-header {
-            background: linear-gradient(90deg, #FF6B35 0%, #F7931E 100%);
+            background: linear-gradient(90deg, #282828 0%, #000000 100%);
             padding: 1rem;
             border-radius: 10px;
-            color: white;
+            color: #F8F8F8;
             text-align: center;
             margin-bottom: 2rem;
+            border-bottom: 3px solid #881818;
         }
         .metric-card {
-            background-color: #f8f9fa;
+            background-color: #FFFFFF;
             padding: 1rem;
             border-radius: 10px;
-            border-left: 4px solid #FF6B35;
+            border: 1px solid #D8D8D8;
+            border-left: 4px solid #881818;
         }
         </style>
         """, unsafe_allow_html=True)
@@ -107,19 +110,6 @@ def main():
     except Exception as e:
         logger.error(f"❌ ERRO ao aplicar CSS: {str(e)}")
         # Continuar mesmo com erro de CSS
-    
-    # Header principal
-    step_start = log_step("Renderização do header")
-    try:
-        st.markdown("""
-        <div class="main-header">
-            <h1>🥋 Sistema de Gestão - Dojo</h1>
-            <p>MVP - Academia de Muay Thai - v1.1</p>
-        </div>
-        """, unsafe_allow_html=True)
-        log_step("Renderização do header", step_start)
-    except Exception as e:
-        logger.error(f"❌ ERRO ao renderizar header: {str(e)}")
     
     # Inicializar autenticação
     step_start = log_step("Inicialização do sistema de autenticação")
@@ -144,6 +134,22 @@ def main():
         logger.error(f"❌ ERRO ao verificar autenticação: {str(e)}")
         st.error("Erro ao verificar autenticação")
         return
+
+    # Header principal (somente após login)
+    step_start = log_step("Renderização do header")
+    try:
+        root_dir = Path(__file__).parent
+        pranch_path = root_dir / "pranch.png"
+        render_brand_header(
+            title="Spirith Muay thai",
+            subtitle="Gestão para academia de Muay Thai",
+            logo_path=pranch_path if pranch_path.exists() else (root_dir / "elefantecontorno.png"),
+            logo_width_px=480,
+            container_class="brand-header-main",
+        )
+        log_step("Renderização do header", step_start)
+    except Exception as e:
+        logger.error(f"❌ ERRO ao renderizar header: {str(e)}")
     
     # Inicializar Firebase com timeout
     firebase_config = None
