@@ -14,12 +14,14 @@ Arquitetura de dados — MVP Academia Muay Thai (Streamlit + Firestore)
 - `nome: string`
 - `contato: { telefone?: string, email?: string }`
 - `endereco?: string`
+- `dataNascimento?: "YYYY-MM-DD"` (data de nascimento do aluno)
 - `status: "ativo" | "inativo"`
 - `vencimentoDia: number` (1–28)
 - `ativoDesde: "YYYY-MM-DD"`
 - `inativoDesde?: "YYYY-MM-DD"`
 - `turma?: string`
 - `ultimoPagamentoYm?: "YYYY-MM"`
+- `responsavel?: { nome?: string, telefone?: string, cpf?: string, rg?: string, dataNascimento?: "YYYY-MM-DD" }`
 - `createdAt, updatedAt: serverTimestamp`
 
 #### Subcoleção `/alunos/{alunoId}/graduacoes/{gradId}`

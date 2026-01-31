@@ -427,6 +427,20 @@ def _mostrar_formulario_novo_aluno(alunos_service: AlunosService):
                 help="Data de início na academia (entre 01/01/2024 e hoje)"
             )
         
+        # Data de nascimento do aluno
+        col1, col2 = st.columns(2)
+        with col1:
+            data_nascimento_aluno = st.date_input(
+                "🎂 Data de Nascimento (opcional)",
+                value=None,
+                min_value=date(1920, 1, 1),
+                max_value=date.today(),
+                help="Data de nascimento do aluno",
+                key="data_nasc_aluno_novo"
+            )
+        with col2:
+            st.write("")  # Spacer
+        
         # Contato
         st.markdown("#### 📞 Contato")
         col1, col2 = st.columns(2)
@@ -465,11 +479,26 @@ def _mostrar_formulario_novo_aluno(alunos_service: AlunosService):
                     placeholder="(11) 99999-9999",
                     key="resp_tel_novo"
                 )
+            
+            # Data de nascimento do responsável
+            col1, col2 = st.columns(2)
+            with col1:
+                responsavel_data_nascimento = st.date_input(
+                    "🎂 Data de Nascimento do Responsável (opcional)",
+                    value=None,
+                    min_value=date(1920, 1, 1),
+                    max_value=date.today(),
+                    help="Data de nascimento do responsável legal",
+                    key="resp_data_nasc_novo"
+                )
+            with col2:
+                st.write("")  # Spacer
         else:
             responsavel_nome = None
             responsavel_cpf = None
             responsavel_rg = None
             responsavel_telefone = None
+            responsavel_data_nascimento = None
         
         # Outros dados
         st.markdown("#### 🏠 Dados Adicionais")
@@ -559,6 +588,10 @@ def _mostrar_formulario_novo_aluno(alunos_service: AlunosService):
             if observacoes and observacoes.strip():
                 dados_aluno['observacoes'] = observacoes.strip()
             
+            # Adicionar data de nascimento do aluno
+            if data_nascimento_aluno:
+                dados_aluno['dataNascimento'] = data_nascimento_aluno.strftime('%Y-%m-%d')
+            
             # Adicionar dados do responsável apenas se algum campo foi preenchido
             if st.session_state.possui_responsavel_novo:
                 responsavel_data = {}
@@ -570,6 +603,8 @@ def _mostrar_formulario_novo_aluno(alunos_service: AlunosService):
                     responsavel_data['cpf'] = responsavel_cpf.strip()
                 if responsavel_rg and responsavel_rg.strip():
                     responsavel_data['rg'] = responsavel_rg.strip()
+                if responsavel_data_nascimento:
+                    responsavel_data['dataNascimento'] = responsavel_data_nascimento.strftime('%Y-%m-%d')
                 if responsavel_data:
                     dados_aluno['responsavel'] = responsavel_data
             
@@ -926,6 +961,30 @@ def _mostrar_formulario_editar_aluno(alunos_service: AlunosService):
                     help="Data de início na academia (entre 01/01/2024 e hoje)"
                 )
             
+            # Data de nascimento do aluno
+            col1, col2 = st.columns(2)
+            with col1:
+                # Carregar data de nascimento existente
+                data_nasc_aluno_atual = aluno.get('dataNascimento', '')
+                if data_nasc_aluno_atual:
+                    try:
+                        data_nasc_aluno_date = datetime.strptime(data_nasc_aluno_atual, '%Y-%m-%d').date()
+                    except:
+                        data_nasc_aluno_date = None
+                else:
+                    data_nasc_aluno_date = None
+                
+                data_nascimento_aluno = st.date_input(
+                    "🎂 Data de Nascimento (opcional)",
+                    value=data_nasc_aluno_date,
+                    min_value=date(1920, 1, 1),
+                    max_value=date.today(),
+                    help="Data de nascimento do aluno",
+                    key="data_nasc_aluno_edit"
+                )
+            with col2:
+                st.write("")  # Spacer
+            
             # Contato
             st.markdown("#### 📞 Contato")
             col1, col2 = st.columns(2)
@@ -985,11 +1044,36 @@ def _mostrar_formulario_editar_aluno(alunos_service: AlunosService):
                         placeholder="(11) 99999-9999",
                         key="resp_tel_edit"
                     )
+                
+                # Data de nascimento do responsável
+                col1, col2 = st.columns(2)
+                with col1:
+                    # Carregar data de nascimento do responsável existente
+                    data_nasc_resp_atual = responsavel_atual.get('dataNascimento', '')
+                    if data_nasc_resp_atual:
+                        try:
+                            data_nasc_resp_date = datetime.strptime(data_nasc_resp_atual, '%Y-%m-%d').date()
+                        except:
+                            data_nasc_resp_date = None
+                    else:
+                        data_nasc_resp_date = None
+                    
+                    responsavel_data_nascimento = st.date_input(
+                        "🎂 Data de Nascimento do Responsável (opcional)",
+                        value=data_nasc_resp_date,
+                        min_value=date(1920, 1, 1),
+                        max_value=date.today(),
+                        help="Data de nascimento do responsável legal",
+                        key="resp_data_nasc_edit"
+                    )
+                with col2:
+                    st.write("")  # Spacer
             else:
                 responsavel_nome = None
                 responsavel_cpf = None
                 responsavel_rg = None
                 responsavel_telefone = None
+                responsavel_data_nascimento = None
             
             # Outros dados
             st.markdown("#### 🏠 Dados Adicionais")
@@ -1111,6 +1195,12 @@ def _mostrar_formulario_editar_aluno(alunos_service: AlunosService):
                 else:
                     dados_atualizacao['observacoes'] = None
                 
+                # Adicionar data de nascimento do aluno
+                if data_nascimento_aluno:
+                    dados_atualizacao['dataNascimento'] = data_nascimento_aluno.strftime('%Y-%m-%d')
+                else:
+                    dados_atualizacao['dataNascimento'] = None
+                
                 # Adicionar ou remover dados do responsável
                 chave_estado = f'possui_responsavel_edit_{aluno_id}'
                 if st.session_state.get(chave_estado, False):
@@ -1123,6 +1213,8 @@ def _mostrar_formulario_editar_aluno(alunos_service: AlunosService):
                         responsavel_data['cpf'] = responsavel_cpf.strip()
                     if responsavel_rg and responsavel_rg.strip():
                         responsavel_data['rg'] = responsavel_rg.strip()
+                    if responsavel_data_nascimento:
+                        responsavel_data['dataNascimento'] = responsavel_data_nascimento.strftime('%Y-%m-%d')
                     dados_atualizacao['responsavel'] = responsavel_data if responsavel_data else None
                 else:
                     # Se desmarcou, remover dados do responsável
