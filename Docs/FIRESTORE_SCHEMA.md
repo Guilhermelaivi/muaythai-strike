@@ -25,7 +25,7 @@ Arquitetura de dados — MVP Academia Muay Thai (Streamlit + Firestore)
 - `createdAt, updatedAt: serverTimestamp`
 
 #### Subcoleção `/alunos/{alunoId}/graduacoes/{gradId}`
-- `nivel: string` (ex.: "Khan Amarelo")
+- `nivel: string` (ex.: "Ponteira Vermelha", "Azul Claro")
 - `data: "YYYY-MM-DD"`
 - `obs?: string`
 - `createdAt, updatedAt: serverTimestamp`

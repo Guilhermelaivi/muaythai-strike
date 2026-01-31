@@ -482,30 +482,21 @@ class GraduacoesService:
     
     def obter_niveis_graduacao_disponiveis(self) -> List[str]:
         """
-        Retorna lista de níveis de graduação disponíveis
+        Retorna lista de níveis de graduação disponíveis (Sistema PraJed)
         
         Returns:
             Lista de níveis ordenados por progressão
         """
-        # Níveis típicos de arte marcial em ordem de progressão
+        # Níveis de graduação Muay Thai - Sistema PraJed (ordem de progressão)
         return [
+            "Sem Graduação",
             "Branca",
-            "Cinza",
-            "Amarela", 
-            "Laranja",
-            "Verde",
-            "Azul",
-            "Roxa", 
-            "Marrom",
-            "Preta 1º Dan",
-            "Preta 2º Dan",
-            "Preta 3º Dan",
-            "Preta 4º Dan",
-            "Preta 5º Dan",
-            "Khan Amarelo",
-            "Khan Verde",
-            "Khan Azul",
-            "Khan Roxo",
-            "Khan Marrom",
-            "Khan Preto"
+            "Ponteira Vermelha",
+            "Vermelha",
+            "Ponteira Azul Claro",
+            "Azul Claro",
+            "Ponteira Azul Escuro",
+            "Azul Escuro",
+            "Ponteira Preta",
+            "Preta"
         ]
