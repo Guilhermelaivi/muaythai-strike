@@ -262,30 +262,43 @@ class AuthManager:
         
         # Fallback para variáveis de ambiente (produção)
         try:
-            # Configurar credenciais do admin a partir de env vars
-            admin_email = os.getenv("STREAMLIT_ADMIN_EMAIL", "admin@spirith.com")
-            admin_name = os.getenv("STREAMLIT_ADMIN_NAME", "Administrador")
-            admin_password = os.getenv("STREAMLIT_ADMIN_PASSWORD_HASH", "$2b$12$O1V01ndVPyE4mEXcDG3QqeIaIKLh5WG.9dxzCiPZ1uKJe41H9VxkC")
+            # Configurar credenciais - Gestor (spiritthai)
+            gestor_username = os.getenv("STREAMLIT_GESTOR_USERNAME", "spiritthai")
+            gestor_email = os.getenv("STREAMLIT_GESTOR_EMAIL", "gestor@spirith.com")
+            gestor_name = os.getenv("STREAMLIT_GESTOR_NAME", "Spirit Thai")
+            gestor_password = os.getenv("STREAMLIT_GESTOR_PASSWORD_HASH", "$2b$12$ISWNgl5owpHMJotnla6S/.cOiEHOcZ4h4gse1I8Ksh0ya840XoB1y")
+            
+            # Configurar credenciais - Dev/Admin (ravin)
+            dev_username = os.getenv("STREAMLIT_DEV_USERNAME", "ravin")
+            dev_email = os.getenv("STREAMLIT_DEV_EMAIL", "ravin@spirith.com")
+            dev_name = os.getenv("STREAMLIT_DEV_NAME", "Ravin")
+            dev_password = os.getenv("STREAMLIT_DEV_PASSWORD_HASH", "$2b$12$hgyAl6.tXrJi8Br.gtPV1u9VDDTH6nCF11LkWX217fSCbQFjheLRO")
             
             self.credentials = {
                 "usernames": {
-                    "admin": {
-                        "email": admin_email,
-                        "name": admin_name,
-                        "password": admin_password
+                    gestor_username: {
+                        "email": gestor_email,
+                        "name": gestor_name,
+                        "password": gestor_password
+                    },
+                    dev_username: {
+                        "email": dev_email,
+                        "name": dev_name,
+                        "password": dev_password
                     }
                 }
             }
             
             # Configurar roles
             self.roles = {
-                "admin": os.getenv("STREAMLIT_ROLES_ADMIN", "admin")
+                gestor_username: "admin",
+                dev_username: "admin"
             }
             
             # Configurar cookie
             self.cookie_config = {
-                "name": os.getenv("STREAMLIT_COOKIE_NAME", "dojo_auth_cookie"),
-                "key": os.getenv("STREAMLIT_COOKIE_KEY", "dojo_secret_key_2025_streamlit_firebase_mvp_academia_muay_thai_64chars"),
+                "name": os.getenv("STREAMLIT_COOKIE_NAME", "spiritthai_auth_cookie"),
+                "key": os.getenv("STREAMLIT_COOKIE_KEY", "spiritthai_secret_key_2026_streamlit_firebase_mvp_academia_muay_thai"),
                 "expiry_days": int(os.getenv("STREAMLIT_COOKIE_EXPIRY_DAYS", "7"))
             }
             
