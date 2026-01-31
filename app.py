@@ -124,6 +124,12 @@ def main():
     # Verificar autenticação
     step_start = log_step("Verificação de autenticação do usuário")
     try:
+        # Verificar se ainda está carregando cookie (evita flash da tela de login)
+        if auth_manager.is_checking_auth():
+            logger.info("⏳ Aguardando carregamento do cookie de autenticação...")
+            auth_manager.show_loading()
+            return
+        
         if not auth_manager.is_authenticated():
             logger.info("👤 Usuário não autenticado - mostrando tela de login")
             auth_manager.show_login()
