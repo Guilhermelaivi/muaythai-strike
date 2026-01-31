@@ -36,7 +36,7 @@ def log_step(step_name, start_time=None):
     return current_time
 
 # Adicionar src ao path para imports
-logger.info("🚀 INICIANDO APLICAÇÃO SPIRITH MUAY THAI")
+logger.info("🚀 INICIANDO APLICAÇÃO SPIRIT MUAY THAI")
 start_total = time.time()
 
 step_start = log_step("Configuração de imports")
@@ -73,7 +73,7 @@ def main():
     step_start = log_step("Configuração da página Streamlit")
     try:
         st.set_page_config(
-            page_title="Spirith Muay thai",
+            page_title="SPIRIT Muay thai",
             page_icon="elefantecontorno.png",
             layout="wide",
             initial_sidebar_state="expanded"
@@ -147,7 +147,7 @@ def main():
         root_dir = Path(__file__).parent
         pranch_path = root_dir / "pranch.png"
         render_brand_header(
-            title="Spirith Muay thai",
+            title="SPIRIT Muay thai",
             subtitle="Gestão para academia de Muay Thai",
             logo_path=pranch_path if pranch_path.exists() else (root_dir / "elefantecontorno.png"),
             logo_width_px=480,

@@ -264,13 +264,13 @@ class AuthManager:
         try:
             # Configurar credenciais - Gestor (spiritthai)
             gestor_username = os.getenv("STREAMLIT_GESTOR_USERNAME", "spiritthai")
-            gestor_email = os.getenv("STREAMLIT_GESTOR_EMAIL", "gestor@spirith.com")
+            gestor_email = os.getenv("STREAMLIT_GESTOR_EMAIL", "gestor@spirit.com")
             gestor_name = os.getenv("STREAMLIT_GESTOR_NAME", "Spirit Thai")
             gestor_password = os.getenv("STREAMLIT_GESTOR_PASSWORD_HASH", "$2b$12$ISWNgl5owpHMJotnla6S/.cOiEHOcZ4h4gse1I8Ksh0ya840XoB1y")
             
             # Configurar credenciais - Dev/Admin (ravin)
             dev_username = os.getenv("STREAMLIT_DEV_USERNAME", "ravin")
-            dev_email = os.getenv("STREAMLIT_DEV_EMAIL", "ravin@spirith.com")
+            dev_email = os.getenv("STREAMLIT_DEV_EMAIL", "ravin@spirit.com")
             dev_name = os.getenv("STREAMLIT_DEV_NAME", "Ravin")
             dev_password = os.getenv("STREAMLIT_DEV_PASSWORD_HASH", "$2b$12$hgyAl6.tXrJi8Br.gtPV1u9VDDTH6nCF11LkWX217fSCbQFjheLRO")
             
@@ -338,7 +338,7 @@ class AuthManager:
             pranch_path = root_dir / "pranch.png"
 
             render_brand_header(
-                title="Spirith Muay thai",
+                title="Spirit Muay thai",
                 subtitle="Faça login para acessar o sistema",
                 logo_path=pranch_path if pranch_path.exists() else (root_dir / "elefantecontorno.png"),
                 logo_width_px=640,
