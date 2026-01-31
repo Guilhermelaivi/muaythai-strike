@@ -9,6 +9,7 @@ from datetime import date, datetime, timedelta
 from typing import Dict, Any, List
 from src.services.pagamentos_service import PagamentosService
 from src.services.alunos_service import AlunosService
+from src.utils.cache_service import get_cache_manager
 
 def show_pagamentos():
     """Exibe a página de gerenciamento de pagamentos"""
@@ -539,6 +540,9 @@ def _mostrar_formulario_editar_pagamento(pagamentos_service: PagamentosService, 
                         
                         if sucesso:
                             st.success("✅ Pagamento atualizado com sucesso!")
+                            # Invalidar cache de pagamentos
+                            cache_manager = get_cache_manager()
+                            cache_manager.invalidate_pagamento_cache(pagamento.get('ym'))
                             # Voltar para lista após 2 segundos
                             st.session_state.pagamentos_modo = 'lista'
                             del st.session_state.pagamento_editando
@@ -573,6 +577,9 @@ def _mostrar_formulario_editar_pagamento(pagamentos_service: PagamentosService, 
                         sucesso = pagamentos_service.deletar_pagamento(pagamento_id)
                         if sucesso:
                             st.success("✅ Pagamento excluído com sucesso!")
+                            # Invalidar cache de pagamentos
+                            cache_manager = get_cache_manager()
+                            cache_manager.invalidate_pagamento_cache(pagamento.get('ym'))
                             st.session_state.pagamentos_modo = 'lista'
                             del st.session_state.pagamento_editando
                             del st.session_state.confirmar_exclusao
@@ -830,6 +837,9 @@ def _mostrar_devedores(pagamentos_service: PagamentosService):
                 with col3:
                     if st.button("💰 Pagar", key=f"pagar_dev_{pagamento.get('id')}", use_container_width=True):
                         if pagamentos_service.marcar_como_pago(pagamento.get('id')):
+                            # Invalidar cache de pagamentos
+                            cache_manager = get_cache_manager()
+                            cache_manager.invalidate_pagamento_cache(pagamento.get('ym'))
                             st.success("Pagamento registrado!")
                             st.rerun()
                 
@@ -915,6 +925,9 @@ def _mostrar_inadimplentes(pagamentos_service: PagamentosService):
                 with col3:
                     if st.button("💰 Pagar", key=f"pagar_inadim_{pagamento.get('id')}", use_container_width=True):
                         if pagamentos_service.marcar_como_pago(pagamento.get('id')):
+                            # Invalidar cache de pagamentos
+                            cache_manager = get_cache_manager()
+                            cache_manager.invalidate_pagamento_cache(pagamento.get('ym'))
                             st.success("Pagamento registrado!")
                             st.rerun()
                 
@@ -1007,6 +1020,9 @@ def _mostrar_devedores(pagamentos_service: PagamentosService):
                 with col3:
                     if st.button("💰 Pagar", key=f"pagar_dev_{pagamento.get('id')}", use_container_width=True):
                         if pagamentos_service.marcar_como_pago(pagamento.get('id')):
+                            # Invalidar cache de pagamentos
+                            cache_manager = get_cache_manager()
+                            cache_manager.invalidate_pagamento_cache(pagamento.get('ym'))
                             st.success("Pagamento registrado!")
                             st.rerun()
                 
