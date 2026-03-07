@@ -855,36 +855,35 @@ def _mostrar_devedores(pagamentos_service: PagamentosService):
             contato = aluno.get('contato', {})
             telefone = contato.get('telefone', '') if isinstance(contato, dict) else ''
             
-            c_info, c_turma, c_acao = st.columns([4, 2, 2])
-            with c_info:
-                st.markdown(f"🔔 **{nome}**")
-                if telefone:
-                    tel_limpo = ''.join(c for c in telefone if c.isdigit())
-                    st.caption(f"📱 [{telefone}](https://wa.me/55{tel_limpo})")
-            with c_turma:
-                st.caption(f"Turma: {turma}")
-                st.caption(f"Venc: dia {vencimento_alvo}")
-            with c_acao:
-                if st.button("💰 Registrar Pgto", key=f"cobrar_{aluno_id}", use_container_width=True):
-                    # Criar pagamento como pago direto
-                    try:
-                        dados = {
-                            'alunoId': aluno_id,
-                            'alunoNome': nome,
-                            'ano': ano_atual,
-                            'mes': mes_atual,
-                            'valor': 150.0,
-                            'status': 'pago',
-                            'exigivel': True
-                        }
-                        pagamentos_service.criar_pagamento(dados)
-                        cache_manager.invalidate_pagamento_cache(ym_atual)
-                        st.toast(f"✅ Pagamento de {nome} registrado!")
-                        st.rerun()
-                    except Exception as e:
-                        st.error(f"Erro: {e}")
-            
-            st.divider()
+            with st.container(border=True):
+                c_info, c_turma, c_acao = st.columns([4, 2, 2])
+                with c_info:
+                    st.markdown(f"🔔 **{nome}**")
+                    if telefone:
+                        tel_limpo = ''.join(c for c in telefone if c.isdigit())
+                        st.caption(f"📱 [{telefone}](https://wa.me/55{tel_limpo})")
+                with c_turma:
+                    st.caption(f"Turma: {turma}")
+                    st.caption(f"Venc: dia {vencimento_alvo}")
+                with c_acao:
+                    if st.button("💰 Registrar Pgto", key=f"cobrar_{aluno_id}", use_container_width=True):
+                        # Criar pagamento como pago direto
+                        try:
+                            dados = {
+                                'alunoId': aluno_id,
+                                'alunoNome': nome,
+                                'ano': ano_atual,
+                                'mes': mes_atual,
+                                'valor': 150.0,
+                                'status': 'pago',
+                                'exigivel': True
+                            }
+                            pagamentos_service.criar_pagamento(dados)
+                            cache_manager.invalidate_pagamento_cache(ym_atual)
+                            st.toast(f"✅ Pagamento de {nome} registrado!")
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"Erro: {e}")
     
     except Exception as e:
         st.error(f"❌ Erro ao carregar a cobrar: {str(e)}")
@@ -978,35 +977,34 @@ def _mostrar_inadimplentes(pagamentos_service: PagamentosService):
                 contato = aluno.get('contato', {})
                 telefone = contato.get('telefone', '') if isinstance(contato, dict) else ''
                 
-                c_info, c_turma, c_acao = st.columns([4, 2, 2])
-                with c_info:
-                    st.markdown(f"🔴 **{nome}**")
-                    if telefone:
-                        tel_limpo = ''.join(c for c in telefone if c.isdigit())
-                        st.caption(f"📱 [{telefone}](https://wa.me/55{tel_limpo})")
-                with c_turma:
-                    st.caption(f"Turma: {turma}")
-                    st.caption(f"Atraso: {aluno.get('_dias_atraso', 0)} dia(s)")
-                with c_acao:
-                    if st.button("💰 Registrar Pgto", key=f"inadim_{aluno_id}", use_container_width=True):
-                        try:
-                            dados = {
-                                'alunoId': aluno_id,
-                                'alunoNome': nome,
-                                'ano': ano_atual,
-                                'mes': mes_atual,
-                                'valor': 150.0,
-                                'status': 'pago',
-                                'exigivel': True
-                            }
-                            pagamentos_service.criar_pagamento(dados)
-                            cache_manager.invalidate_pagamento_cache(ym_atual)
-                            st.toast(f"✅ Pagamento de {nome} registrado!")
-                            st.rerun()
-                        except Exception as e:
-                            st.error(f"Erro: {e}")
-                
-                st.divider()
+                with st.container(border=True):
+                    c_info, c_turma, c_acao = st.columns([4, 2, 2])
+                    with c_info:
+                        st.markdown(f"🔴 **{nome}**")
+                        if telefone:
+                            tel_limpo = ''.join(c for c in telefone if c.isdigit())
+                            st.caption(f"📱 [{telefone}](https://wa.me/55{tel_limpo})")
+                    with c_turma:
+                        st.caption(f"Turma: {turma}")
+                        st.caption(f"Atraso: {aluno.get('_dias_atraso', 0)} dia(s)")
+                    with c_acao:
+                        if st.button("💰 Registrar Pgto", key=f"inadim_{aluno_id}", use_container_width=True):
+                            try:
+                                dados = {
+                                    'alunoId': aluno_id,
+                                    'alunoNome': nome,
+                                    'ano': ano_atual,
+                                    'mes': mes_atual,
+                                    'valor': 150.0,
+                                    'status': 'pago',
+                                    'exigivel': True
+                                }
+                                pagamentos_service.criar_pagamento(dados)
+                                cache_manager.invalidate_pagamento_cache(ym_atual)
+                                st.toast(f"✅ Pagamento de {nome} registrado!")
+                                st.rerun()
+                            except Exception as e:
+                                st.error(f"Erro: {e}")
     
     except Exception as e:
         st.error(f"❌ Erro ao carregar inadimplentes: {str(e)}")
@@ -1177,20 +1175,3 @@ def _mostrar_estatisticas_pagamentos(pagamentos_service: PagamentosService):
     except Exception as e:
         st.error(f"❌ Erro ao obter estatísticas: {str(e)}")
 
-def show_presencas():
-    """Página de Presenças - Sprint 3"""
-    st.markdown("## ✅ Presenças")
-    st.info("🚧 **Sprint 3** - Implementação prevista")
-    st.markdown("- Check-in de alunos\n- Relatório mensal\n- Histórico de presenças")
-
-def show_graduacoes():
-    """Página de Graduações - Sprint 3"""
-    st.markdown("## 🥋 Graduações")
-    st.info("🚧 **Sprint 3** - Implementação prevista")
-    st.markdown("- Registro de promoções\n- Timeline por aluno\n- Histórico de graduações")
-
-def show_planos():
-    """Página de Planos - Sprint 1"""
-    st.markdown("## 📋 Planos")
-    st.info("🚧 **Sprint 1** - Implementação prevista")
-    st.markdown("- CRUD de planos\n- Apenas planos mensais no MVP\n- Configuração de valores")
