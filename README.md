@@ -1,4 +1,4 @@
-# 🥋 Spirith Muay thai - MVP
+# 🥋 Spirit Muay thai - MVP
 
 Sistema de gestão para academia de Muay Thai desenvolvido com **Streamlit + Firestore**.
 
@@ -53,7 +53,7 @@ pip install -r requirements.txt
 
 ```toml
 [credentials]
-usernames = { admin = { email = "admin@spirith.com", name = "Administrador", password = "$2b$12$SEU_HASH_AQUI" } }
+usernames = { admin = { email = "admin@spirit.com", name = "Administrador", password = "$2b$12$SEU_HASH_AQUI" } }
 
 [cookie]
 name = "dojo_auth_cookie"  

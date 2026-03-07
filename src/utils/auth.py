@@ -270,7 +270,7 @@ class AuthManager:
             
             # Configurar credenciais - Dev/Admin (ravin)
             dev_username = os.getenv("STREAMLIT_DEV_USERNAME", "ravin")
-            dev_email = os.getenv("STREAMLIT_DEV_EMAIL", "ravin@spirit.com")
+            dev_email = os.getenv("STREAMLIT_DEV_EMAIL", "ravin@spirit  .com")
             dev_name = os.getenv("STREAMLIT_DEV_NAME", "Ravin")
             dev_password = os.getenv("STREAMLIT_DEV_PASSWORD_HASH", "$2b$12$hgyAl6.tXrJi8Br.gtPV1u9VDDTH6nCF11LkWX217fSCbQFjheLRO")
             

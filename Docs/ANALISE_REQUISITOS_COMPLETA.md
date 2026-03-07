@@ -1,4 +1,4 @@
-# 📋 ANÁLISE COMPLETA DE REQUISITOS - Sistema Spirith Muay thai
+# 📋 ANÁLISE COMPLETA DE REQUISITOS - Sistema Spirit Muay thai
 
 **Data da Análise:** 20/11/2025  
 **Analista:** GitHub Copilot  

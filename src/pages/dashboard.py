@@ -5,7 +5,6 @@ Página Dashboard - KPIs e visão geral
 import streamlit as st
 from datetime import datetime, date
 from typing import Dict, Any, Optional
-import plotly.express as px
 import pandas as pd
 from src.utils.notifications import NotificationService
 from src.services.alunos_service import AlunosService
@@ -168,112 +167,32 @@ def show_dashboard(mode: Optional[str] = None, forced_year: Optional[int] = None
     
     st.divider()
     
-    # Gráficos
-    col1, col2 = st.columns(2)
+    # --- Ações Rápidas ---
+    if effective_mode != 'historico':
+        st.markdown("### ⚡ Ações Rápidas")
+        aq1, aq2, aq3 = st.columns(3)
+        with aq1:
+            if st.button("✅ Registrar Presença", use_container_width=True):
+                st.session_state.current_page = "✅ Presenças"
+                st.rerun()
+        with aq2:
+            if st.button("💰 Novo Pagamento", use_container_width=True):
+                st.session_state.current_page = "💰 Pagamentos"
+                st.session_state['pagamentos_modo'] = 'novo'
+                st.rerun()
+        with aq3:
+            if st.button("👥 Novo Aluno", use_container_width=True):
+                st.session_state.current_page = "👥 Alunos"
+                st.session_state['alunos_modo'] = 'novo'
+                st.rerun()
+        st.divider()
+
+    # --- Seção Devedores / Inadimplentes do Mês (ação rápida) ---
+    if not is_annual_view and effective_mode != 'historico':
+        _mostrar_secao_devedores(ym, dados_reais)
     
-    with col1:
-        # Ajustar título e eixo baseado na visualização
-        if is_annual_view:
-            st.markdown("#### 📈 Evolução de Receita (3 anos)")
-            titulo_grafico = "Receita Anual"
-            eixo_x = 'Ano'
-        else:
-            st.markdown("#### 📈 Evolução de Receita (6 meses)")
-            titulo_grafico = "Receita Mensal"
-            eixo_x = 'Mês'
-        
-        # Obter dados históricos reais
-        try:
-            receitas_historicas = _get_receitas_historicas(ym, is_annual_view)
-            
-            fig_receita = px.line(
-                receitas_historicas, 
-                x=eixo_x, 
-                y='Receita',
-                title=titulo_grafico,
-                markers=True
-            )
-            fig_receita.update_layout(height=300)
-            st.plotly_chart(fig_receita, use_container_width=True)
-            
-        except Exception as e:
-            st.error(f"Erro ao carregar histórico de receitas: {str(e)}")
-    
-    with col2:
-        st.markdown("#### 🥋 Status dos Alunos")
-        
-        # Dados reais para gráfico de pizza
-        df_status = pd.DataFrame({
-            'Status': ['Ativos', 'Inativos'],
-            'Quantidade': [dados_reais['ativos'], dados_reais['inativos']]
-        })
-        
-        fig_status = px.pie(
-            df_status,
-            values='Quantidade',
-            names='Status',
-            title="Distribuição de Alunos",
-            color_discrete_map={
-                'Ativos': '#28a745',
-                'Inativos': '#6c757d'
-            }
-        )
-        fig_status.update_layout(height=300)
-        st.plotly_chart(fig_status, use_container_width=True)
-    
-    # Gráficos adicionais
-    st.markdown("---")
-    st.markdown("#### 📊 Analytics Avançados")
-    
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        # Graduações por nível
-        try:
-            graduacoes_service = GraduacoesService()
-            stats_grad = graduacoes_service.obter_estatisticas_graduacoes(mode=effective_mode)
-            
-            if stats_grad['distribuicao_por_nivel']:
-                # Limitar a top 8 graduações para visualização
-                distribuicao = dict(list(stats_grad['distribuicao_por_nivel'].items())[:8])
-                
-                fig_grad = px.bar(
-                    x=list(distribuicao.keys()),
-                    y=list(distribuicao.values()),
-                    title="Distribuição por Graduação",
-                    labels={'x': 'Graduação', 'y': 'Quantidade'}
-                )
-                fig_grad.update_layout(height=300)
-                st.plotly_chart(fig_grad, use_container_width=True)
-            else:
-                st.info("Nenhum dado de graduação disponível")
-                
-        except Exception as e:
-            st.info(f"Graduações não disponíveis: {str(e)}")
-    
-    with col2:
-        # Presenças vs Faltas do mês
-        try:
-            presencas_service = PresencasService()
-            relatorio_presencas = presencas_service.obter_relatorio_mensal(ym)
-            
-            presencas = relatorio_presencas.get('total_presencas', 0)
-            faltas = relatorio_presencas.get('total_faltas', 0)
-            
-            if presencas > 0 or faltas > 0:
-                fig_presencas = px.pie(
-                    values=[presencas, faltas],
-                    names=['Presenças', 'Faltas'],
-                    title=f'Presenças vs Faltas ({ym})',
-                    color_discrete_map={'Presenças': 'green', 'Faltas': 'red'}
-                )
-                fig_presencas.update_layout(height=300)
-                st.plotly_chart(fig_presencas, use_container_width=True)
-            else:
-                st.info("Nenhum dado de presença disponível para este mês")
-                
-        except Exception as e:
-            st.info(f"Presenças não disponíveis: {str(e)}")
+    # Gráficos ocultos por ora (Evolução Receita, Status Alunos, Analytics)
+    # Pode ser reativado futuramente se necessário
     
     # # ====================================================================
     # # SEÇÃO DE ALERTAS E NOTIFICAÇÕES - TEMPORARIAMENTE DESABILITADA
@@ -386,6 +305,85 @@ def show_dashboard(mode: Optional[str] = None, forced_year: Optional[int] = None
     # # FIM DA SEÇÃO DE ALERTAS E NOTIFICAÇÕES (COMENTADA)
     # # ====================================================================
 
+
+def _mostrar_secao_devedores(ym: str, dados_reais: Dict[str, Any]):
+    """Mostra lista de devedores/inadimplentes com ações rápidas (Marcar Pago, WhatsApp)"""
+    total_pendentes = dados_reais.get('devedores', 0) + dados_reais.get('inadimplentes', 0)
+    if total_pendentes == 0:
+        st.success("✅ Nenhum devedor ou inadimplente neste mês!")
+        st.divider()
+        return
+
+    st.markdown("### 🔔 Cobranças Pendentes")
+
+    try:
+        if 'pagamentos_service' not in st.session_state:
+            st.session_state.pagamentos_service = PagamentosService()
+        if 'alunos_service' not in st.session_state:
+            st.session_state.alunos_service = AlunosService()
+        pagamentos_service = st.session_state.pagamentos_service
+        alunos_service = st.session_state.alunos_service
+        cache_manager = get_cache_manager()
+
+        # Buscar devedores e inadimplentes do mês
+        devedores = pagamentos_service.obter_devedores(ym=ym)
+        inadimplentes = pagamentos_service.obter_inadimplentes(ym=ym)
+        pendentes = devedores + inadimplentes
+
+        if not pendentes:
+            st.info("Nenhum pagamento pendente encontrado.")
+            st.divider()
+            return
+
+        # Montar mapa alunoId → telefone (1 query via cache)
+        alunos = cache_manager.get_alunos_cached(alunos_service)
+        telefone_map = {a['id']: a.get('telefone', '') for a in alunos}
+
+        for pag in pendentes:
+            pag_id = pag.get('id', '')
+            nome = pag.get('alunoNome', 'N/A')
+            valor = pag.get('valor', 0)
+            status = pag.get('status', 'devedor')
+            aluno_id = pag.get('alunoId', '')
+            telefone = telefone_map.get(aluno_id, '')
+
+            status_emoji = "🔴" if status == 'inadimplente' else "🟡"
+            status_label = "Inadimplente" if status == 'inadimplente' else "A cobrar"
+
+            col_info, col_tel, col_action = st.columns([4, 2, 2])
+
+            with col_info:
+                st.markdown(f"{status_emoji} **{nome}** — R$ {valor:.2f} ({status_label})")
+
+            with col_tel:
+                if telefone:
+                    tel_limpo = ''.join(c for c in telefone if c.isdigit())
+                    if tel_limpo:
+                        st.markdown(
+                            f"[📱 WhatsApp](https://wa.me/55{tel_limpo})",
+                            unsafe_allow_html=True,
+                        )
+                    else:
+                        st.caption("Sem telefone")
+                else:
+                    st.caption("Sem telefone")
+
+            with col_action:
+                if st.button("💰 Pago", key=f"dash_pagar_{pag_id}", use_container_width=True):
+                    try:
+                        pagamentos_service.marcar_como_pago(pag_id)
+                        cache_manager.invalidate_pagamento_cache()
+                        st.toast(f"✅ {nome} marcado como pago!")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Erro: {e}")
+
+    except Exception as e:
+        st.error(f"Erro ao carregar devedores: {e}")
+
+    st.divider()
+
+
 def _get_available_period():
     """Detecta período disponível nos dados reais de pagamentos"""
     try:
@@ -448,10 +446,16 @@ def _get_available_period():
 def _get_real_data(ym: str, is_annual_view: bool = False, mode: str = 'operacional') -> Dict[str, Any]:
     """Obtém dados reais dos serviços para o dashboard com cache"""
     try:
-        # Inicializar serviços e cache
-        alunos_service = AlunosService()
-        pagamentos_service = PagamentosService()
-        presencas_service = PresencasService()
+        # Reusar instâncias via session_state (T25)
+        if 'alunos_service' not in st.session_state:
+            st.session_state.alunos_service = AlunosService()
+        if 'pagamentos_service' not in st.session_state:
+            st.session_state.pagamentos_service = PagamentosService()
+        if 'presencas_service' not in st.session_state:
+            st.session_state.presencas_service = PresencasService()
+        alunos_service = st.session_state.alunos_service
+        pagamentos_service = st.session_state.pagamentos_service
+        presencas_service = st.session_state.presencas_service
         cache_manager = get_cache_manager()
         
         # Determinar ano-alvo
@@ -575,7 +579,9 @@ def _get_real_data(ym: str, is_annual_view: bool = False, mode: str = 'operacion
 def _get_receitas_historicas(ym_atual: str, is_annual_view: bool = False) -> pd.DataFrame:
     """Obtém receitas dos últimos períodos para gráfico histórico"""
     try:
-        pagamentos_service = PagamentosService()
+        if 'pagamentos_service' not in st.session_state:
+            st.session_state.pagamentos_service = PagamentosService()
+        pagamentos_service = st.session_state.pagamentos_service
         
         if is_annual_view:
             # Visualização anual: mostrar últimos anos

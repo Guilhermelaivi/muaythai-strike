@@ -17,12 +17,14 @@ def signal_handler(signum, frame):
     print("🛑 Recebido sinal de parada")
     sys.exit(0)
 
-# Registrar handler para sinais
-signal.signal(signal.SIGTERM, signal_handler)
-signal.signal(signal.SIGINT, signal_handler)
+# Registrar handler para sinais (apenas na thread principal)
+import threading
+if threading.current_thread() is threading.main_thread():
+    signal.signal(signal.SIGTERM, signal_handler)
+    signal.signal(signal.SIGINT, signal_handler)
 
 def main():
-    print("🚀 SPIRITH MUAY THAI - Railway Deploy")
+    print("🚀 SPIRIT MUAY THAI - Railway Deploy")
     
     # Obter porta do Railway
     port = os.environ.get('PORT', '8501')

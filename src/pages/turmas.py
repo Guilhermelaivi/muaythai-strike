@@ -98,7 +98,7 @@ def mostrar_formulario(turmas_service):
     st.markdown("### ➕ Cadastrar Nova Turma")
     
     with st.form("form_turma"):
-        nome = st.text_input("🏛️ Nome da Turma", placeholder="Ex: KIDS, ADULTA Matutino")
+        nome = st.text_input("Nome da Turma", placeholder="Ex: KIDS, ADULTA Matutino")
         
         col1, col2 = st.columns(2)
         with col1:
@@ -120,7 +120,7 @@ def mostrar_formulario(turmas_service):
         with col5:
             sex = st.checkbox("Sex")
         
-        descricao = st.text_area("📝 Descrição", placeholder="Informações adicionais sobre a turma")
+        descricao = st.text_area("Descrição", placeholder="Informações adicionais sobre a turma")
         
         submitted = st.form_submit_button("✅ Cadastrar Turma")
         

@@ -1,4 +1,4 @@
-# 🚀 Deploy Railway - Spirith Muay thai
+# 🚀 Deploy Railway - Spririt Muay thai
 
 ## 📋 Configuração Required no Railway
 

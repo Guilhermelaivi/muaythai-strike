@@ -9,7 +9,10 @@ from datetime import date, datetime
 from typing import Dict, Any, List
 from src.services.alunos_service import AlunosService
 from src.services.graduacoes_service import GraduacoesService
+from src.services.pagamentos_service import PagamentosService
+from src.services.presencas_service import PresencasService
 from src.services.turmas_service import TurmasService
+from src.utils.cache_service import get_cache_manager
 
 def show_alunos():
     """Exibe a página de gerenciamento de alunos"""
@@ -30,37 +33,32 @@ def show_alunos():
     if 'alunos_modo' not in st.session_state:
         st.session_state.alunos_modo = 'lista'
     
-    # Menu de navegação
-    col1, col2, col3 = st.columns([1, 1, 1])
-    
-    with col1:
-        if st.button("📋 Lista de Alunos", use_container_width=True, 
-                    type="primary" if st.session_state.alunos_modo == 'lista' else "secondary"):
-            st.session_state.alunos_modo = 'lista'
+    # Busca global: veio do sidebar com aluno específico
+    if 'busca_aluno_id' in st.session_state:
+        aluno_id = st.session_state.pop('busca_aluno_id')
+        if st.button("← Voltar à lista", key="voltar_busca"):
             st.rerun()
+        _mostrar_ficha_360(aluno_id)
+        return
     
-    with col2:
-        if st.button("➕ Novo Aluno", use_container_width=True,
-                    type="primary" if st.session_state.alunos_modo == 'novo' else "secondary"):
-            st.session_state.alunos_modo = 'novo'
-            st.rerun()
-    
-    with col3:
-        if st.button("📊 Estatísticas", use_container_width=True,
-                    type="primary" if st.session_state.alunos_modo == 'stats' else "secondary"):
-            st.session_state.alunos_modo = 'stats'
-            st.rerun()
-    
-    st.markdown("---")
-    
-    # Renderizar conteúdo baseado no modo
-    if st.session_state.alunos_modo == 'lista':
-        _mostrar_lista_alunos(alunos_service)
-    elif st.session_state.alunos_modo == 'novo':
-        _mostrar_formulario_novo_aluno(alunos_service)
-    elif st.session_state.alunos_modo == 'editar':
+    # Modos de overlay (editar/completo) substituem as tabs
+    if st.session_state.alunos_modo == 'editar':
         _mostrar_formulario_editar_aluno(alunos_service)
-    elif st.session_state.alunos_modo == 'stats':
+        return
+    if st.session_state.alunos_modo == 'completo':
+        _mostrar_formulario_novo_aluno(alunos_service)
+        return
+    
+    # Navegação por tabs (sem rerun ao trocar de aba)
+    tab_lista, tab_novo, tab_stats = st.tabs(
+        ["📋 Lista de Alunos", "➕ Novo Aluno", "📊 Estatísticas"]
+    )
+    
+    with tab_lista:
+        _mostrar_lista_alunos(alunos_service)
+    with tab_novo:
+        _mostrar_quick_add_aluno(alunos_service)
+    with tab_stats:
         _mostrar_estatisticas_alunos(alunos_service)
 
 def _mostrar_lista_alunos(alunos_service: AlunosService):
@@ -119,7 +117,8 @@ def _mostrar_lista_alunos(alunos_service: AlunosService):
             "👥 Turma:",
             options=turmas_opcoes,
             index=filtro_turma_idx,
-            help="Filtre por turma específica para melhor performance. 'Todas' carrega todos os alunos."
+            help="Filtre por turma específica para melhor performance. 'Todas' carrega todos os alunos.",
+            key="alunos_filtro_turma"
         )
         # Atualizar session_state apenas se mudou
         novo_idx = turmas_opcoes.index(filtro_turma)
@@ -132,7 +131,8 @@ def _mostrar_lista_alunos(alunos_service: AlunosService):
         filtro_status = st.selectbox(
             "🎯 Status:",
             options=status_opcoes,
-            index=filtro_status_idx
+            index=filtro_status_idx,
+            key="alunos_filtro_status"
         )
         # Atualizar session_state apenas se mudou
         novo_idx = status_opcoes.index(filtro_status)
@@ -144,7 +144,8 @@ def _mostrar_lista_alunos(alunos_service: AlunosService):
         filtro_vencimento = st.selectbox(
             "📅 Vencimento:",
             options=vencimentos_opcoes,
-            index=filtro_vencimento_idx
+            index=filtro_vencimento_idx,
+            key="alunos_filtro_vencimento"
         )
         # Atualizar session_state apenas se mudou
         novo_idx = vencimentos_opcoes.index(filtro_vencimento)
@@ -164,7 +165,8 @@ def _mostrar_lista_alunos(alunos_service: AlunosService):
                 "vencimentoDia": "Vencimento",
                 "ativoDesde": "Data Cadastro",
                 "turma": "Turma"
-            }.get(x, x)
+            }.get(x, x),
+            key="alunos_filtro_ordenar"
         )
         # Atualizar session_state apenas se mudou
         novo_idx = ordenar_opcoes.index(ordenar_por)
@@ -236,31 +238,11 @@ def _mostrar_lista_alunos(alunos_service: AlunosService):
             contato = aluno.get('contato', {})
             telefone = contato.get('telefone', 'N/A') if isinstance(contato, dict) else 'N/A'
             
-            # Obter graduação atual e histórico
             graduacao_atual = aluno.get('graduacao', 'Sem graduação')
-            graduacao_tooltip = graduacao_atual
-            
-            # Buscar histórico de graduações se disponível
-            if graduacoes_service and aluno.get('id'):
-                try:
-                    historico = graduacoes_service.listar_graduacoes_aluno(aluno.get('id'))
-                    if historico:
-                        # Criar tooltip com histórico
-                        historico_texto = []
-                        for idx, grad in enumerate(reversed(historico[-5:])):  # Últimas 5 graduações
-                            data_grad = grad.get('data', 'N/A')
-                            nivel_grad = grad.get('nivel', 'N/A')
-                            historico_texto.append(f"{idx+1}. {nivel_grad} ({data_grad})")
-                        
-                        if historico_texto:
-                            graduacao_tooltip = "Histórico:\n" + "\n".join(historico_texto)
-                except Exception:
-                    pass  # Silenciosamente falhar se não conseguir buscar
             
             dados_tabela.append({
                 'Nome': aluno.get('nome', ''),
                 'Graduação': graduacao_atual,
-                'Graduação_Tooltip': graduacao_tooltip,
                 'Status': status_texto,
                 'Vencimento': f"Dia {aluno.get('vencimentoDia', 'N/A')}",
                 'Telefone': telefone,
@@ -275,12 +257,11 @@ def _mostrar_lista_alunos(alunos_service: AlunosService):
         # Configurar exibição das colunas
         column_config = {
             "ID": None,  # Esconder ID
-            "Graduação_Tooltip": None,  # Esconder coluna de tooltip
             "Nome": st.column_config.TextColumn("👤 Nome", width="large"),
             "Graduação": st.column_config.TextColumn(
                 "🥋 Graduação", 
                 width="medium",
-                help="Graduação atual do aluno. Selecione a linha para ver histórico completo."
+                help="Graduação atual do aluno. Selecione a linha para ver ficha completa."
             ),
             "Status": st.column_config.TextColumn("📊 Status", width="small"),
             "Vencimento": st.column_config.TextColumn("📅 Venc.", width="small"),
@@ -307,30 +288,8 @@ def _mostrar_lista_alunos(alunos_service: AlunosService):
             st.markdown("---")
             st.markdown(f"### 🎯 Aluno Selecionado: **{aluno_selecionado['Nome']}**")
             
-            # Exibir histórico de graduações do aluno selecionado
-            if graduacoes_service and aluno_selecionado['Graduação_Tooltip'].startswith('Histórico:'):
-                with st.expander("🎓 Histórico de Graduações", expanded=False):
-                    try:
-                        historico = graduacoes_service.listar_graduacoes_aluno(aluno_selecionado['ID'])
-                        if historico:
-                            st.markdown(f"**Graduação Atual:** {aluno_selecionado['Graduação']}")
-                            st.markdown("**Histórico completo:**")
-                            
-                            for idx, grad in enumerate(reversed(historico), 1):
-                                data_grad = grad.get('data', 'N/A')
-                                nivel_grad = grad.get('nivel', 'N/A')
-                                obs_grad = grad.get('obs', '')
-                                
-                                if obs_grad:
-                                    st.markdown(f"{idx}. **{nivel_grad}** - {data_grad} _{obs_grad}_")
-                                else:
-                                    st.markdown(f"{idx}. **{nivel_grad}** - {data_grad}")
-                        else:
-                            st.info("Nenhuma graduação registrada ainda.")
-                    except Exception as e:
-                        st.error(f"Erro ao carregar histórico: {str(e)}")
-            
-            col1, col2, col3, col4 = st.columns(4)
+            # Botões de ação
+            col1, col2, col3 = st.columns(3)
             
             with col1:
                 if st.button("✏️ Editar", use_container_width=True):
@@ -351,8 +310,14 @@ def _mostrar_lista_alunos(alunos_service: AlunosService):
                             st.rerun()
             
             with col3:
-                if st.button("👁️ Detalhes", use_container_width=True):
-                    _mostrar_detalhes_aluno(alunos_service, aluno_selecionado['ID'])
+                telefone = aluno_selecionado.get('Telefone', '')
+                if telefone and telefone != 'N/A':
+                    tel_limpo = ''.join(c for c in telefone if c.isdigit())
+                    if tel_limpo:
+                        st.markdown(f"[📱 WhatsApp](https://wa.me/55{tel_limpo})")
+            
+            # Ficha 360° do aluno
+            _mostrar_ficha_360(aluno_selecionado['ID'])
         
         # Resumo
         st.markdown("---")
@@ -361,8 +326,91 @@ def _mostrar_lista_alunos(alunos_service: AlunosService):
     except Exception as e:
         st.error(f"❌ Erro ao carregar alunos: {str(e)}")
 
+def _mostrar_quick_add_aluno(alunos_service: AlunosService):
+    """Formulário rápido de cadastro: Nome + Turma + Telefone"""
+    
+    st.markdown("### Cadastro Rápido")
+    
+    # Carregar turmas
+    try:
+        if 'turmas_service' not in st.session_state:
+            st.session_state.turmas_service = TurmasService()
+        turmas_db = st.session_state.turmas_service.listar_turmas(apenas_ativas=True)
+        turmas_nomes = [t['nome'] for t in turmas_db] if turmas_db else []
+        turmas_labels = [f"{t['nome']} ({t['horarioInicio']} - {t['horarioFim']})" for t in turmas_db] if turmas_db else []
+    except Exception:
+        turmas_nomes = []
+        turmas_labels = []
+    
+    with st.form("form_quick_add", clear_on_submit=True):
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            nome = st.text_input("Nome *", placeholder="Nome completo")
+        with col2:
+            if turmas_nomes:
+                turma_idx = st.selectbox(
+                    "Turma",
+                    options=range(len(turmas_labels)),
+                    format_func=lambda i: turmas_labels[i],
+                )
+                turma = turmas_nomes[turma_idx]
+            else:
+                turma = ""
+                st.caption("Nenhuma turma cadastrada")
+        with col3:
+            telefone = st.text_input("Telefone", placeholder="(11) 99999-9999")
+        
+        submitted = st.form_submit_button("Cadastrar", type="primary", use_container_width=True)
+        
+        if submitted:
+            if not nome or not nome.strip():
+                st.error("❌ Nome é obrigatório!")
+            else:
+                dados = {
+                    'nome': nome.strip(),
+                    'status': 'ativo',
+                    'vencimentoDia': 15,
+                    'ativoDesde': date.today().strftime('%Y-%m-%d'),
+                    'turma': turma.strip() if turma else '',
+                }
+                if telefone and telefone.strip():
+                    dados['contato'] = {'telefone': telefone.strip()}
+                try:
+                    aluno_id = alunos_service.criar_aluno(dados)
+                    st.session_state.aluno_cadastrado = {'nome': nome.strip(), 'id': aluno_id}
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"❌ Erro: {e}")
+    
+    # Sucesso
+    if 'aluno_cadastrado' in st.session_state:
+        info = st.session_state.aluno_cadastrado
+        st.success(f"✅ **{info['nome']}** cadastrado!")
+        c1, c2 = st.columns(2)
+        with c1:
+            if st.button("📋 Ver na Lista", type="primary", use_container_width=True):
+                del st.session_state.aluno_cadastrado
+                st.session_state.alunos_modo = 'lista'
+                st.rerun()
+        with c2:
+            if st.button("➕ Cadastrar Outro", use_container_width=True):
+                del st.session_state.aluno_cadastrado
+                st.rerun()
+    
+    # Link para formulário completo
+    with st.expander("📝 Precisa de mais campos? Use o formulário completo"):
+        if st.button("Abrir Formulário Completo", use_container_width=True):
+            st.session_state.alunos_modo = 'completo'
+            st.rerun()
+
+
 def _mostrar_formulario_novo_aluno(alunos_service: AlunosService):
     """Mostra formulário para cadastrar novo aluno"""
+    
+    if st.button("← Voltar ao Cadastro Rápido"):
+        st.session_state.alunos_modo = 'lista'
+        st.rerun()
     
     st.markdown("### ➕ Cadastrar Novo Aluno")
     
@@ -406,93 +454,92 @@ def _mostrar_formulario_novo_aluno(alunos_service: AlunosService):
     
     with st.form("form_novo_aluno", clear_on_submit=True):
         # Dados básicos
-        st.markdown("#### 📝 Dados Básicos")
+        st.markdown("#### Dados Básicos")
         col1, col2 = st.columns(2)
         
         with col1:
-            nome = st.text_input("👤 Nome Completo (opcional)", placeholder="Digite o nome completo")
+            nome = st.text_input("Nome Completo", placeholder="Digite o nome completo")
             vencimento_dia = st.selectbox(
-                "📅 Dia do Vencimento (opcional)", 
+                "Dia do Vencimento", 
                 options=[10, 15, 25],
-                index=1  # 15 como padrão
+                index=1
             )
         
         with col2:
-            status = st.selectbox("📊 Status (opcional)", options=["ativo", "inativo"], index=0)
+            status = st.selectbox("Status", options=["ativo", "inativo"], index=0)
             ativo_desde = st.date_input(
-                "📆 Ativo Desde (opcional)", 
+                "Ativo Desde", 
                 value=date.today(),
                 min_value=date(2024, 1, 1),
                 max_value=date.today(),
-                help="Data de início na academia (entre 01/01/2024 e hoje)"
+                help="Data de início na academia",
+                format="DD/MM/YYYY"
             )
         
-        # Data de nascimento do aluno
         col1, col2 = st.columns(2)
         with col1:
             data_nascimento_aluno = st.date_input(
-                "🎂 Data de Nascimento (opcional)",
+                "Data de Nascimento",
                 value=None,
                 min_value=date(1920, 1, 1),
                 max_value=date.today(),
-                help="Data de nascimento do aluno",
-                key="data_nasc_aluno_novo"
+                key="data_nasc_aluno_novo",
+                format="DD/MM/YYYY"
             )
         with col2:
-            st.write("")  # Spacer
+            st.write("")
         
         # Contato
-        st.markdown("#### 📞 Contato")
+        st.markdown("#### Contato")
         col1, col2 = st.columns(2)
         
         with col1:
-            telefone = st.text_input("📱 Telefone", placeholder="(11) 99999-9999")
+            telefone = st.text_input("Telefone", placeholder="(11) 99999-9999")
         
         with col2:
-            email = st.text_input("📧 Email", placeholder="aluno@email.com")
+            email = st.text_input("Email", placeholder="aluno@email.com")
         
         # Campos do responsável aparecem SE o checkbox estiver marcado
         if st.session_state.possui_responsavel_novo:
-            st.markdown("#### 👤 Dados do Responsável Legal")
+            st.markdown("#### Responsável Legal")
             col1, col2 = st.columns(2)
             
             with col1:
                 responsavel_nome = st.text_input(
-                    "👤 Nome Completo do Responsável (opcional)",
-                    placeholder="Digite o nome completo",
+                    "Nome do Responsável",
+                    placeholder="Nome completo",
                     key="resp_nome_novo"
                 )
                 responsavel_cpf = st.text_input(
-                    "🆔 CPF do Responsável (opcional)",
+                    "CPF do Responsável",
                     placeholder="000.000.000-00",
                     key="resp_cpf_novo"
                 )
             
             with col2:
                 responsavel_rg = st.text_input(
-                    "🪪 RG do Responsável (opcional)",
+                    "RG do Responsável",
                     placeholder="00.000.000-0",
                     key="resp_rg_novo"
                 )
                 responsavel_telefone = st.text_input(
-                    "📱 Telefone do Responsável (opcional)",
+                    "Telefone do Responsável",
                     placeholder="(11) 99999-9999",
                     key="resp_tel_novo"
                 )
             
-            # Data de nascimento do responsável
             col1, col2 = st.columns(2)
             with col1:
                 responsavel_data_nascimento = st.date_input(
-                    "🎂 Data de Nascimento do Responsável (opcional)",
+                    "Nascimento do Responsável",
                     value=None,
                     min_value=date(1920, 1, 1),
                     max_value=date.today(),
-                    help="Data de nascimento do responsável legal",
-                    key="resp_data_nasc_novo"
+                    key="resp_data_nasc_novo",
+                    format="DD/MM/YYYY"
                 )
             with col2:
-                st.write("")  # Spacer
+                st.write("")
         else:
             responsavel_nome = None
             responsavel_cpf = None
@@ -501,11 +548,11 @@ def _mostrar_formulario_novo_aluno(alunos_service: AlunosService):
             responsavel_data_nascimento = None
         
         # Outros dados
-        st.markdown("#### 🏠 Dados Adicionais")
+        st.markdown("#### Dados Adicionais")
         col1, col2 = st.columns(2)
         
         with col1:
-            endereco = st.text_input("🏠 Endereço", placeholder="Rua, número, bairro")
+            endereco = st.text_input("Endereço", placeholder="Rua, número, bairro")
         
         with col2:
             # Buscar turmas do banco de dados
@@ -536,28 +583,22 @@ def _mostrar_formulario_novo_aluno(alunos_service: AlunosService):
                 turmas_opcoes_exibicao = ["(Não informar agora)"] + turmas_opcoes
                 turmas_nomes_valores = [""] + turmas_nomes
                 turma_selecionada_idx = st.selectbox(
-                    "🥋 Turma (opcional)",
+                    "Turma",
                     options=range(len(turmas_opcoes_exibicao)),
                     format_func=lambda x: turmas_opcoes_exibicao[x],
                     index=0,
-                    help="Você pode deixar em branco e preencher depois."
+                    help="Opcional — pode preencher depois."
                 )
                 turma = turmas_nomes_valores[turma_selecionada_idx]
         
-        # Campo de observações
-        st.markdown("#### 📝 Observações")
-        observacoes = st.text_area("💬 Observações", placeholder="Informações adicionais sobre o aluno...", height=100, help="Campo opcional para anotações")
+        # Observações
+        observacoes = st.text_area("Observações", placeholder="Informações adicionais sobre o aluno...", height=80)
         
-        # Botões
         st.markdown("---")
         col1, col2, col3 = st.columns([1, 1, 2])
         
         with col1:
-            submitted = st.form_submit_button("✅ Cadastrar", type="primary", use_container_width=True)
-        
-        with col2:
-            if st.form_submit_button("🔄 Limpar", use_container_width=True):
-                st.rerun()
+            submitted = st.form_submit_button("Cadastrar", type="primary", use_container_width=True)
         
         # Processar formulário
         if submitted:
@@ -739,26 +780,22 @@ def _mostrar_estatisticas_alunos(alunos_service: AlunosService):
             st.markdown("---")
             st.markdown("#### 🥋 Distribuição por Turma")
             
-            # Preparar dados para gráfico
+            # Preparar dados para tabela
             turma_df = pd.DataFrame(
                 list(stats['por_turma'].items()),
                 columns=['Turma', 'Quantidade']
             ).sort_values('Quantidade', ascending=False)
             
-            # Gráfico de barras
-            st.bar_chart(turma_df.set_index('Turma'))
-            
-            # Tabela detalhada
-            st.markdown("##### 📋 Detalhes por Turma")
-            st.dataframe(
-                turma_df,
-                column_config={
-                    "Turma": "🥋 Turma",
-                    "Quantidade": "👥 Quantidade"
-                },
-                hide_index=True,
-                use_container_width=True
-            )
+            # Barras visuais com progress bars
+            for _, row in turma_df.iterrows():
+                max_qtd = turma_df['Quantidade'].max()
+                col_nome, col_barra, col_num = st.columns([2, 6, 1])
+                with col_nome:
+                    st.markdown(f"**{row['Turma']}**")
+                with col_barra:
+                    st.progress(row['Quantidade'] / max_qtd if max_qtd > 0 else 0)
+                with col_num:
+                    st.markdown(f"**{row['Quantidade']}**")
         
         # Análise de vencimentos
         st.markdown("---")
@@ -776,77 +813,141 @@ def _mostrar_estatisticas_alunos(alunos_service: AlunosService):
                 columns=['Dia', 'Quantidade']
             ).sort_values('Dia')
             
-            st.line_chart(venc_df.set_index('Dia'))
+            # Barras visuais para vencimentos
+            for _, row in venc_df.iterrows():
+                max_qtd = venc_df['Quantidade'].max()
+                col_dia, col_barra, col_num = st.columns([2, 6, 1])
+                with col_dia:
+                    st.markdown(f"Dia **{int(row['Dia'])}**")
+                with col_barra:
+                    st.progress(row['Quantidade'] / max_qtd if max_qtd > 0 else 0)
+                with col_num:
+                    st.markdown(f"**{row['Quantidade']}**")
             
-            st.info(f"💡 **Dicas:** Dia com mais vencimentos: **{max(vencimentos, key=vencimentos.get)}** ({max(vencimentos.values())} alunos)")
+            st.info(f"💡 Dia com mais vencimentos: **{max(vencimentos, key=vencimentos.get)}** ({max(vencimentos.values())} alunos)")
         
     except Exception as e:
         st.error(f"❌ Erro ao carregar estatísticas: {str(e)}")
 
-def _mostrar_detalhes_aluno(alunos_service: AlunosService, aluno_id: str):
-    """Mostra detalhes completos de um aluno"""
-    
+def _mostrar_ficha_360(aluno_id: str):
+    """Mostra ficha 360° do aluno: dados, pagamentos, presenças e graduações"""
     try:
+        alunos_service = st.session_state.get('alunos_service') or AlunosService()
         aluno = alunos_service.buscar_aluno(aluno_id)
-        
         if not aluno:
             st.error("❌ Aluno não encontrado!")
             return
-        
-        st.markdown(f"### 👤 Detalhes: **{aluno.get('nome', 'N/A')}**")
-        
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.markdown("#### 📝 Dados Básicos")
-            st.write(f"**ID:** {aluno.get('id', 'N/A')}")
-            st.write(f"**Status:** {aluno.get('status', 'N/A').title()}")
-            st.write(f"**Vencimento:** Dia {aluno.get('vencimentoDia', 'N/A')}")
-            st.write(f"**Ativo desde:** {aluno.get('ativoDesde', 'N/A')}")
-            if aluno.get('inativoDesde'):
-                st.write(f"**Inativo desde:** {aluno.get('inativoDesde')}")
-        
-        with col2:
-            st.markdown("#### 📞 Contato e Outros")
-            contato = aluno.get('contato', {})
-            if isinstance(contato, dict):
-                st.write(f"**Telefone:** {contato.get('telefone', 'N/A')}")
-                st.write(f"**Email:** {contato.get('email', 'N/A')}")
-            st.write(f"**Endereço:** {aluno.get('endereco', 'N/A')}")
-            st.write(f"**Turma:** {aluno.get('turma', 'N/A')}")
-            if aluno.get('ultimoPagamentoYm'):
-                st.write(f"**Último Pagamento:** {aluno.get('ultimoPagamentoYm')}")
-        
-        # Dados do responsável (se houver)
-        responsavel = aluno.get('responsavel', {})
-        if responsavel and isinstance(responsavel, dict):
-            st.markdown("#### 👨‍👩‍👧‍👦 Responsável Legal")
+
+        tab_dados, tab_pag, tab_pres, tab_grad = st.tabs(
+            ["📝 Dados", "💰 Pagamentos", "✅ Presenças", "🥋 Graduações"]
+        )
+
+        # --- Aba Dados ---
+        with tab_dados:
             col1, col2 = st.columns(2)
-            
             with col1:
-                st.write(f"**Nome:** {responsavel.get('nome', 'N/A')}")
-                st.write(f"**CPF:** {responsavel.get('cpf', 'N/A')}")
-            
+                st.write(f"**Status:** {aluno.get('status', 'N/A').title()}")
+                st.write(f"**Vencimento:** Dia {aluno.get('vencimentoDia', 'N/A')}")
+                st.write(f"**Turma:** {aluno.get('turma', 'N/A')}")
+                st.write(f"**Ativo desde:** {aluno.get('ativoDesde', 'N/A')}")
+                if aluno.get('dataNascimento'):
+                    st.write(f"**Nascimento:** {aluno.get('dataNascimento')}")
             with col2:
-                st.write(f"**RG:** {responsavel.get('rg', 'N/A')}")
-                st.write(f"**Telefone:** {responsavel.get('telefone', 'N/A')}")
-        
-        # Observações
-        observacoes = aluno.get('observacoes', '')
-        if observacoes and observacoes.strip():
-            st.markdown("#### 📝 Observações")
-            st.info(observacoes)
-        
-        # Timestamps
-        if aluno.get('createdAt') or aluno.get('updatedAt'):
-            st.markdown("#### 🕒 Timestamps")
-            if aluno.get('createdAt'):
-                st.write(f"**Criado em:** {aluno.get('createdAt')}")
-            if aluno.get('updatedAt'):
-                st.write(f"**Atualizado em:** {aluno.get('updatedAt')}")
-        
+                contato = aluno.get('contato', {})
+                if isinstance(contato, dict):
+                    st.write(f"**Telefone:** {contato.get('telefone', 'N/A')}")
+                    st.write(f"**Email:** {contato.get('email', 'N/A')}")
+                st.write(f"**Endereço:** {aluno.get('endereco', 'N/A')}")
+
+            responsavel = aluno.get('responsavel', {})
+            if responsavel and isinstance(responsavel, dict):
+                st.markdown("##### 👨‍👩‍👧‍👦 Responsável")
+                st.write(f"{responsavel.get('nome', 'N/A')} — Tel: {responsavel.get('telefone', 'N/A')}")
+
+            obs = aluno.get('observacoes', '')
+            if obs and obs.strip():
+                st.info(obs)
+
+        # --- Aba Pagamentos ---
+        with tab_pag:
+            try:
+                pag_service = PagamentosService()
+                pagamentos = pag_service.listar_pagamentos_por_aluno(aluno_id)
+                if not pagamentos:
+                    st.info("Nenhum pagamento registrado.")
+                else:
+                    pagamentos.sort(key=lambda x: x.get('ym', ''), reverse=True)
+                    STATUS_MAP = {
+                        'pago': '🟢 Pago', 'devedor': '🔔 A Cobrar',
+                        'inadimplente': '🔴 Inadimplente', 'ausente': '⚪ Ausente'
+                    }
+                    df_pag = pd.DataFrame([{
+                        'Mês': p.get('ym', ''),
+                        'Valor': p.get('valor', 0),
+                        'Status': STATUS_MAP.get(p.get('status', ''), p.get('status', '')),
+                    } for p in pagamentos])
+                    st.dataframe(
+                        df_pag, hide_index=True, use_container_width=True,
+                        column_config={'Valor': st.column_config.NumberColumn(format="R$ %.2f")},
+                    )
+                    # Ação rápida para pendentes
+                    pendentes = [p for p in pagamentos if p.get('status') in ('devedor', 'inadimplente')]
+                    if pendentes:
+                        cache_manager = get_cache_manager()
+                        for p in pendentes:
+                            c1, c2 = st.columns([4, 2])
+                            with c1:
+                                emoji = '🔴' if p.get('status') == 'inadimplente' else '🔔'
+                                st.markdown(f"{emoji} {p.get('ym', '')} — R$ {p.get('valor', 0):.2f}")
+                            with c2:
+                                if st.button("💰 Pago", key=f"ficha_pag_{p.get('id')}", use_container_width=True):
+                                    pag_service.marcar_como_pago(p.get('id'))
+                                    cache_manager.invalidate_pagamento_cache(p.get('ym'))
+                                    st.toast(f"✅ Pagamento {p.get('ym')} marcado como pago!")
+                                    st.rerun()
+            except Exception as e:
+                st.error(f"Erro ao carregar pagamentos: {e}")
+
+        # --- Aba Presenças ---
+        with tab_pres:
+            try:
+                pres_service = PresencasService()
+                hoje = date.today()
+                ym_atual = f"{hoje.year}-{hoje.month:02d}"
+                relatorio = pres_service.obter_relatorio_mensal(ym_atual)
+                detalhes = relatorio.get('detalhes', {})
+                # detalhes is a dict with 'presentes' and 'faltas' lists
+                presentes_list = detalhes.get('presentes', []) if isinstance(detalhes, dict) else []
+                faltas_list = detalhes.get('faltas', []) if isinstance(detalhes, dict) else []
+                total_p = sum(1 for r in presentes_list if r.get('alunoId') == aluno_id)
+                total_f = sum(1 for r in faltas_list if r.get('alunoId') == aluno_id)
+                c1, c2 = st.columns(2)
+                with c1:
+                    st.metric("✅ Presenças (mês)", total_p)
+                with c2:
+                    st.metric("❌ Faltas (mês)", total_f)
+                if total_p == 0 and total_f == 0:
+                    st.info(f"Nenhum registro de presença em {ym_atual}.")
+            except Exception as e:
+                st.error(f"Erro ao carregar presenças: {e}")
+
+        # --- Aba Graduações ---
+        with tab_grad:
+            try:
+                grad_service = st.session_state.get('graduacoes_service') or GraduacoesService()
+                historico = grad_service.listar_graduacoes_aluno(aluno_id)
+                if not historico:
+                    st.info("Nenhuma graduação registrada.")
+                else:
+                    st.write(f"**Atual:** {aluno.get('graduacao', 'N/A')}")
+                    for idx, grad in enumerate(reversed(historico), 1):
+                        obs_g = f" — _{grad.get('obs')}_" if grad.get('obs') else ""
+                        st.markdown(f"{idx}. **{grad.get('nivel', 'N/A')}** — {grad.get('data', 'N/A')}{obs_g}")
+            except Exception as e:
+                st.error(f"Erro ao carregar graduações: {e}")
+
     except Exception as e:
-        st.error(f"❌ Erro ao carregar detalhes: {str(e)}")
+        st.error(f"❌ Erro ao carregar ficha: {str(e)}")
 
 def _mostrar_formulario_editar_aluno(alunos_service: AlunosService):
     """Mostra formulário para editar aluno existente"""
@@ -873,6 +974,10 @@ def _mostrar_formulario_editar_aluno(alunos_service: AlunosService):
             return
         
         st.markdown(f"### ✏️ Editar Aluno: **{aluno.get('nome', 'N/A')}**")
+        
+        # Feedback visual de atualização
+        if st.session_state.pop('aluno_atualizado', False):
+            st.success(f"✅ Aluno **{aluno.get('nome', '')}** atualizado com sucesso!")
         
         # Botão voltar
         col1, col2, col3 = st.columns([1, 1, 2])
@@ -911,12 +1016,12 @@ def _mostrar_formulario_editar_aluno(alunos_service: AlunosService):
         
         with st.form("form_editar_aluno", clear_on_submit=False):
             # Dados básicos
-            st.markdown("#### 📝 Dados Básicos")
+            st.markdown("#### Dados Básicos")
             col1, col2 = st.columns(2)
             
             with col1:
                 nome = st.text_input(
-                    "👤 Nome Completo (opcional)", 
+                    "Nome Completo", 
                     value=aluno.get('nome', ''),
                     placeholder="Digite o nome completo"
                 )
@@ -932,14 +1037,14 @@ def _mostrar_formulario_editar_aluno(alunos_service: AlunosService):
                         venc_atual = 25
                 
                 vencimento_dia = st.selectbox(
-                    "📅 Dia do Vencimento (opcional)", 
+                    "Dia do Vencimento", 
                     options=[10, 15, 25],
                     index=[10, 15, 25].index(venc_atual)
                 )
             
             with col2:
                 status = st.selectbox(
-                    "📊 Status (opcional)", 
+                    "Status", 
                     options=["ativo", "inativo"], 
                     index=0 if aluno.get('status') == 'ativo' else 1
                 )
@@ -954,11 +1059,12 @@ def _mostrar_formulario_editar_aluno(alunos_service: AlunosService):
                     ativo_desde_date = date.today()
                 
                 ativo_desde = st.date_input(
-                    "📆 Ativo Desde (opcional)", 
+                    "Ativo Desde", 
                     value=ativo_desde_date,
                     min_value=date(2024, 1, 1),
                     max_value=date.today(),
-                    help="Data de início na academia (entre 01/01/2024 e hoje)"
+                    help="Data de início na academia",
+                    format="DD/MM/YYYY"
                 )
             
             # Data de nascimento do aluno
@@ -975,18 +1081,18 @@ def _mostrar_formulario_editar_aluno(alunos_service: AlunosService):
                     data_nasc_aluno_date = None
                 
                 data_nascimento_aluno = st.date_input(
-                    "🎂 Data de Nascimento (opcional)",
+                    "Data de Nascimento",
                     value=data_nasc_aluno_date,
                     min_value=date(1920, 1, 1),
                     max_value=date.today(),
-                    help="Data de nascimento do aluno",
-                    key="data_nasc_aluno_edit"
+                    key="data_nasc_aluno_edit",
+                    format="DD/MM/YYYY"
                 )
             with col2:
                 st.write("")  # Spacer
             
             # Contato
-            st.markdown("#### 📞 Contato")
+            st.markdown("#### Contato")
             col1, col2 = st.columns(2)
             
             contato_atual = aluno.get('contato', {})
@@ -995,14 +1101,14 @@ def _mostrar_formulario_editar_aluno(alunos_service: AlunosService):
             
             with col1:
                 telefone = st.text_input(
-                    "📱 Telefone", 
+                    "Telefone", 
                     value=contato_atual.get('telefone', ''),
                     placeholder="(11) 99999-9999"
                 )
             
             with col2:
                 email = st.text_input(
-                    "📧 Email", 
+                    "Email", 
                     value=contato_atual.get('email', ''),
                     placeholder="aluno@email.com"
                 )
@@ -1010,7 +1116,7 @@ def _mostrar_formulario_editar_aluno(alunos_service: AlunosService):
             # Campos do responsável aparecem SE o checkbox estiver marcado
             chave_estado = f'possui_responsavel_edit_{aluno_id}'
             if st.session_state.get(chave_estado, False):
-                st.markdown("#### 👤 Dados do Responsável Legal")
+                st.markdown("#### Responsável Legal")
                 responsavel_atual = aluno.get('responsavel', {})
                 if not isinstance(responsavel_atual, dict):
                     responsavel_atual = {}
@@ -1019,13 +1125,13 @@ def _mostrar_formulario_editar_aluno(alunos_service: AlunosService):
                 
                 with col1:
                     responsavel_nome = st.text_input(
-                        "👤 Nome Completo do Responsável (opcional)",
+                        "Nome do Responsável",
                         value=responsavel_atual.get('nome', ''),
-                        placeholder="Digite o nome completo",
+                        placeholder="Nome completo",
                         key="resp_nome_edit"
                     )
                     responsavel_cpf = st.text_input(
-                        "🆔 CPF do Responsável (opcional)",
+                        "CPF do Responsável",
                         value=responsavel_atual.get('cpf', ''),
                         placeholder="000.000.000-00",
                         key="resp_cpf_edit"
@@ -1033,13 +1139,13 @@ def _mostrar_formulario_editar_aluno(alunos_service: AlunosService):
                 
                 with col2:
                     responsavel_rg = st.text_input(
-                        "🪪 RG do Responsável (opcional)",
+                        "RG do Responsável",
                         value=responsavel_atual.get('rg', ''),
                         placeholder="00.000.000-0",
                         key="resp_rg_edit"
                     )
                     responsavel_telefone = st.text_input(
-                        "📱 Telefone do Responsável (opcional)",
+                        "Telefone do Responsável",
                         value=responsavel_atual.get('telefone', ''),
                         placeholder="(11) 99999-9999",
                         key="resp_tel_edit"
@@ -1059,12 +1165,12 @@ def _mostrar_formulario_editar_aluno(alunos_service: AlunosService):
                         data_nasc_resp_date = None
                     
                     responsavel_data_nascimento = st.date_input(
-                        "🎂 Data de Nascimento do Responsável (opcional)",
+                        "Nascimento do Responsável",
                         value=data_nasc_resp_date,
                         min_value=date(1920, 1, 1),
                         max_value=date.today(),
-                        help="Data de nascimento do responsável legal",
-                        key="resp_data_nasc_edit"
+                        key="resp_data_nasc_edit",
+                        format="DD/MM/YYYY"
                     )
                 with col2:
                     st.write("")  # Spacer
@@ -1076,12 +1182,12 @@ def _mostrar_formulario_editar_aluno(alunos_service: AlunosService):
                 responsavel_data_nascimento = None
             
             # Outros dados
-            st.markdown("#### 🏠 Dados Adicionais")
+            st.markdown("#### Dados Adicionais")
             col1, col2 = st.columns(2)
             
             with col1:
                 endereco = st.text_input(
-                    "🏠 Endereço", 
+                    "Endereço", 
                     value=aluno.get('endereco', ''),
                     placeholder="Rua, número, bairro"
                 )
@@ -1119,7 +1225,7 @@ def _mostrar_formulario_editar_aluno(alunos_service: AlunosService):
                 
                 if turmas_nomes:
                     turma_selecionada_idx = st.selectbox(
-                        "🥋 Turma *", 
+                        "Turma *", 
                         options=range(len(turmas_opcoes)),
                         format_func=lambda x: turmas_opcoes[x],
                         index=turma_index,
@@ -1130,13 +1236,12 @@ def _mostrar_formulario_editar_aluno(alunos_service: AlunosService):
                 else:
                     turma = turma_atual
             
-            # Campo de observações
-            st.markdown("#### 📝 Observações")
-            observacoes = st.text_area("💬 Observações", value=aluno.get('observacoes', ''), placeholder="Informações adicionais sobre o aluno...", height=100, help="Campo opcional para anotações", key="editar_observacoes")
+            # Observações
+            observacoes = st.text_area("Observações", value=aluno.get('observacoes', ''), placeholder="Informações adicionais...", height=80, key="editar_observacoes")
             
             # Informações adicionais para status inativo
             if status == 'inativo':
-                st.markdown("#### ⏸️ Dados de Inativação")
+                st.markdown("#### Dados de Inativação")
                 inativo_desde_value = aluno.get('inativoDesde', date.today().strftime('%Y-%m-%d'))
                 if isinstance(inativo_desde_value, str):
                     try:
@@ -1146,7 +1251,7 @@ def _mostrar_formulario_editar_aluno(alunos_service: AlunosService):
                 else:
                     inativo_desde_date = date.today()
                 
-                inativo_desde = st.date_input("📅 Inativo Desde", value=inativo_desde_date)
+                inativo_desde = st.date_input("Inativo Desde", value=inativo_desde_date, format="DD/MM/YYYY")
             
             # Botões
             st.markdown("---")
@@ -1232,7 +1337,6 @@ def _mostrar_formulario_editar_aluno(alunos_service: AlunosService):
                     sucesso = alunos_service.atualizar_aluno(aluno_id, dados_atualizacao)
                     
                     if sucesso:
-                        st.success(f"✅ Aluno **{nome}** atualizado com sucesso!")
                         # Limpar cache para forçar recarregamento
                         st.cache_data.clear()
                         # Limpar estado do checkbox
@@ -1240,6 +1344,7 @@ def _mostrar_formulario_editar_aluno(alunos_service: AlunosService):
                         if chave_estado in st.session_state:
                             del st.session_state[chave_estado]
                         st.session_state.aluno_atualizado = True
+                        st.toast(f"✅ Aluno {nome} atualizado com sucesso!")
                         st.rerun()
                         
                 except Exception as e:

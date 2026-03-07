@@ -9,7 +9,6 @@ from google.cloud import firestore
 from src.utils.firebase_config import get_firestore_client
 from src.utils.readonly_guard import ensure_writable
 from src.utils.operational_scope import should_apply_operational_scope, presenca_is_operational
-import uuid
 
 class PresencasService:
     """Serviço para gerenciamento de presenças e check-ins"""
@@ -45,36 +44,27 @@ class PresencasService:
         if data_presenca is None:
             data_presenca = date.today()
         
-        # Gerar ID único para presença
-        presenca_id = str(uuid.uuid4())
-        
-        # Formatar campos
+        # Doc-id determinístico: elimina read-before-write
+        aluno_id_clean = aluno_id.strip()
         data_str = data_presenca.strftime('%Y-%m-%d')
         ym = data_presenca.strftime('%Y-%m')
+        presenca_id = f"{aluno_id_clean}_{data_str}"
         
         # Preparar documento
         agora = firestore.SERVER_TIMESTAMP
         documento = {
-            'alunoId': aluno_id.strip(),
+            'alunoId': aluno_id_clean,
             'data': data_str,
             'ym': ym,
             'presente': presente,
-            'createdAt': agora,
             'updatedAt': agora
         }
         
         try:
-            # Verificar se já existe presença para este aluno na mesma data
-            presenca_existente = self.buscar_presenca_por_aluno_data(aluno_id, data_presenca)
-            
-            if presenca_existente:
-                # Atualizar presença existente
-                return self.atualizar_presenca(presenca_existente['id'], {'presente': presente})
-            else:
-                # Criar nova presença
-                doc_ref = self.db.collection(self.collection_name).document(presenca_id)
-                doc_ref.set(documento)
-                return presenca_id
+            doc_ref = self.db.collection(self.collection_name).document(presenca_id)
+            # merge=True preserva createdAt em docs existentes
+            doc_ref.set({**documento, 'createdAt': agora}, merge=True)
+            return presenca_id
             
         except Exception as e:
             raise Exception(f"Erro ao registrar presença: {str(e)}")
@@ -200,6 +190,81 @@ class PresencasService:
         except Exception as e:
             raise Exception(f"Erro ao listar presenças: {str(e)}")
     
+    def buscar_presencas_por_data(self, data_presenca: date) -> Dict[str, Dict[str, Any]]:
+        """
+        Busca todas as presenças de uma data (1 query).
+        
+        Returns:
+            Mapa alunoId → presença
+        """
+        try:
+            data_str = data_presenca.strftime('%Y-%m-%d')
+            query = (self.db.collection(self.collection_name)
+                     .where('data', '==', data_str)
+                     .limit(500))
+            docs = query.stream()
+            resultado = {}
+            for doc in docs:
+                p = doc.to_dict()
+                p['id'] = doc.id
+                resultado[p.get('alunoId', '')] = p
+            return resultado
+        except Exception as e:
+            raise Exception(f"Erro ao buscar presenças por data: {str(e)}")
+    
+    def registrar_presencas_batch(self, registros: List[Dict[str, Any]], data_presenca: date) -> int:
+        """
+        Registra presenças em batch (1 roundtrip ao Firestore).
+        
+        Args:
+            registros: Lista de {'alunoId': str, 'presente': bool}
+            data_presenca: Data da aula
+        
+        Returns:
+            Quantidade de documentos escritos
+        """
+        ensure_writable("registrar presenças em batch")
+        
+        data_str = data_presenca.strftime('%Y-%m-%d')
+        ym = data_presenca.strftime('%Y-%m')
+        
+        # Carregar presenças existentes para a data (1 query)
+        existentes = self.buscar_presencas_por_data(data_presenca)
+        
+        agora = firestore.SERVER_TIMESTAMP
+        batch = self.db.batch()
+        count = 0
+        
+        for reg in registros:
+            aluno_id = reg['alunoId']
+            presente = reg['presente']
+            existente = existentes.get(aluno_id)
+            
+            if existente:
+                # Atualizar apenas se mudou
+                if existente.get('presente') != presente:
+                    doc_ref = self.db.collection(self.collection_name).document(existente['id'])
+                    batch.update(doc_ref, {'presente': presente, 'updatedAt': agora})
+                    count += 1
+            else:
+                # Criar novo com doc-id determinístico
+                presenca_id = f"{aluno_id}_{data_str}"
+                doc_ref = self.db.collection(self.collection_name).document(presenca_id)
+                batch.set(doc_ref, {
+                    'alunoId': aluno_id,
+                    'data': data_str,
+                    'ym': ym,
+                    'presente': presente,
+                    'createdAt': agora,
+                    'updatedAt': agora,
+                })
+                count += 1
+        
+        if count > 0:
+            batch.commit()
+        
+        return count
+
     def atualizar_presenca(self, presenca_id: str, dados_atualizacao: Dict[str, Any]) -> bool:
         """
         Atualiza uma presença existente

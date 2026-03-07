@@ -38,30 +38,24 @@ def show_pagamentos():
     if 'pagamentos_modo' not in st.session_state:
         st.session_state.pagamentos_modo = 'lista'
     
-    # Menu de navegação - Apenas 2 abas principais
-    col1, col2 = st.columns([1, 1])
-    
-    with col1:
-        if st.button("📋 Lista de Pagamentos", use_container_width=True, 
-                    type="primary" if st.session_state.pagamentos_modo == 'lista' else "secondary"):
-            st.session_state.pagamentos_modo = 'lista'
-            st.rerun()
-    
-    with col2:
-        if st.button("➕ Cadastrar Pagamento", use_container_width=True,
-                    type="primary" if st.session_state.pagamentos_modo == 'novo' else "secondary"):
-            st.session_state.pagamentos_modo = 'novo'
-            st.rerun()
-    
-    st.markdown("---")
-    
-    # Renderizar conteúdo baseado no modo
-    if st.session_state.pagamentos_modo == 'lista':
-        _mostrar_lista_pagamentos_filtrada(pagamentos_service, alunos_service)
-    elif st.session_state.pagamentos_modo == 'novo':
-        _mostrar_formulario_novo_pagamento(pagamentos_service, alunos_service)
-    elif st.session_state.pagamentos_modo == 'editar':
+    # Editar é um overlay que substitui as tabs
+    if st.session_state.pagamentos_modo == 'editar':
         _mostrar_formulario_editar_pagamento(pagamentos_service, alunos_service)
+        return
+    
+    # Navegação por tabs (sem rerun ao trocar de aba)
+    tab_todos, tab_cobrar, tab_inadim, tab_cadastrar = st.tabs(
+        ["📋 Todos", "🔔 A Cobrar", "🔴 Inadimplentes", "➕ Cadastrar"]
+    )
+    
+    with tab_todos:
+        _mostrar_lista_pagamentos_filtrada(pagamentos_service, alunos_service)
+    with tab_cobrar:
+        _mostrar_devedores(pagamentos_service)
+    with tab_inadim:
+        _mostrar_inadimplentes(pagamentos_service)
+    with tab_cadastrar:
+        _mostrar_formulario_novo_pagamento(pagamentos_service, alunos_service)
 
 def _mostrar_lista_pagamentos_filtrada(pagamentos_service: PagamentosService, alunos_service: AlunosService):
     """Mostra lista unificada de pagamentos com filtros por turma e status"""
@@ -83,7 +77,8 @@ def _mostrar_lista_pagamentos_filtrada(pagamentos_service: PagamentosService, al
         status_selecionado = st.selectbox(
             "📊 Status:",
             options=list(status_opcoes.keys()),
-            index=0
+            index=0,
+            key="pag_filtro_status"
         )
         filtro_status = status_opcoes[status_selecionado]
     
@@ -99,7 +94,8 @@ def _mostrar_lista_pagamentos_filtrada(pagamentos_service: PagamentosService, al
             turma_selecionada = st.selectbox(
                 "🥋 Turma:",
                 options=list(turmas_opcoes.keys()),
-                index=0
+                index=0,
+                key="pag_filtro_turma"
             )
             filtro_turma = turmas_opcoes[turma_selecionada]
         except:
@@ -128,7 +124,7 @@ def _mostrar_lista_pagamentos_filtrada(pagamentos_service: PagamentosService, al
 
             meses_opcoes.append(mes_ano)
         
-        mes_selecionado = st.selectbox("📅 Mês:", options=meses_opcoes, index=1 if len(meses_opcoes) > 1 else 0)
+        mes_selecionado = st.selectbox("📅 Mês:", options=meses_opcoes, index=1 if len(meses_opcoes) > 1 else 0, key="pag_filtro_mes")
         filtro_mes = None if mes_selecionado == "Todos os meses" else mes_selecionado
     
     with col_busca:
@@ -136,11 +132,12 @@ def _mostrar_lista_pagamentos_filtrada(pagamentos_service: PagamentosService, al
         termo_busca = st.text_input(
             "🔍 Buscar aluno:",
             placeholder="Digite o nome...",
-            help="Busque por nome do aluno"
+            help="Busque por nome do aluno",
+            key="pag_busca_todos"
         )
     
     # Botão de limpar filtros
-    if st.button("🗑️ Limpar Filtros"):
+    if st.button("Limpar Filtros", key="pag_limpar_filtros"):
         st.rerun()
     
     st.markdown("---")
@@ -168,6 +165,13 @@ def _mostrar_lista_pagamentos_filtrada(pagamentos_service: PagamentosService, al
             # Buscar todos (limitado)
             pagamentos = pagamentos_service.listar_pagamentos()
         
+        # Pré-carregar mapa alunoId → turmaId (evita N queries individuais)
+        aluno_turma_map = {}
+        if filtro_turma:
+            cache_manager = get_cache_manager()
+            todos_alunos = cache_manager.get_alunos_cached(alunos_service)
+            aluno_turma_map = {a['id']: a.get('turmaId') for a in todos_alunos}
+        
         # Aplicar filtros no cliente
         pagamentos_filtrados = []
         for pag in pagamentos:
@@ -179,11 +183,9 @@ def _mostrar_lista_pagamentos_filtrada(pagamentos_service: PagamentosService, al
             if alunos_ids and pag.get('alunoId') not in alunos_ids:
                 continue
             
-            # Filtro de turma
+            # Filtro de turma (usa mapa pré-carregado)
             if filtro_turma:
-                # Buscar turma do aluno
-                aluno = alunos_service.buscar_aluno(pag.get('alunoId'))
-                if aluno and aluno.get('turmaId') != filtro_turma:
+                if aluno_turma_map.get(pag.get('alunoId')) != filtro_turma:
                     continue
             
             pagamentos_filtrados.append(pag)
@@ -218,60 +220,64 @@ def _mostrar_lista_pagamentos_filtrada(pagamentos_service: PagamentosService, al
         # Ordenar pagamentos (mais recentes primeiro)
         pagamentos_filtrados.sort(key=lambda x: (x.get('ym', ''), x.get('alunoNome', '')), reverse=True)
         
-        # Mostrar pagamentos em tabela
-        for pagamento in pagamentos_filtrados:
-            status = pagamento.get('status', 'indefinido')
-            ym = pagamento.get('ym', 'N/A')
-            aluno_nome = pagamento.get('alunoNome', 'N/A')
-            valor = pagamento.get('valor', 0)
-            data_vencimento = pagamento.get('dataVencimento', 15)
-            
-            # Definir cor e emoji por status
-            if status == 'pago':
-                cor = "🟢"
-                status_texto = "Pago"
-                cor_fundo = "#d4edda"
-            elif status == 'devedor':
-                cor = "🔔"
-                status_texto = "A Cobrar"
-                cor_fundo = "#fff3cd"
-            elif status == 'inadimplente':
-                cor = "🔴"
-                status_texto = "Inadimplente"
-                cor_fundo = "#f8d7da"
-            elif status == 'ausente':
-                cor = "⚪"
-                status_texto = "Ausente"
-                cor_fundo = "#f8f9fa"
-            else:
-                cor = "❓"
-                status_texto = "Indefinido"
-                cor_fundo = "#ffffff"
-            
-            # Container para cada pagamento
-            with st.container():
-                col1, col2, col3, col4, col5 = st.columns([3, 2, 2, 2, 1])
+        # Tabela compacta com st.dataframe
+        STATUS_MAP = {
+            'pago': '🟢 Pago',
+            'devedor': '🔔 A Cobrar',
+            'inadimplente': '🔴 Inadimplente',
+            'ausente': '⚪ Ausente',
+        }
+        
+        df_data = []
+        for p in pagamentos_filtrados:
+            df_data.append({
+                'Aluno': p.get('alunoNome', 'N/A'),
+                'Mês': p.get('ym', ''),
+                'Valor': p.get('valor', 0),
+                'Status': STATUS_MAP.get(p.get('status', ''), '❓ ' + p.get('status', '')),
+                'Venc.': p.get('dataVencimento', 15),
+            })
+        
+        df = pd.DataFrame(df_data)
+        st.dataframe(
+            df,
+            use_container_width=True,
+            hide_index=True,
+            column_config={
+                'Valor': st.column_config.NumberColumn(format="R$ %.2f"),
+                'Venc.': st.column_config.NumberColumn(format="Dia %d"),
+            },
+        )
+        
+        # Ações rápidas para pendentes (devedor / inadimplente)
+        pendentes = [p for p in pagamentos_filtrados if p.get('status') in ('devedor', 'inadimplente')]
+        if pendentes:
+            st.markdown("#### ⚡ Ações Pendentes")
+            cache_manager = get_cache_manager()
+            for pag in pendentes:
+                pag_id = pag.get('id', '')
+                nome = pag.get('alunoNome', 'N/A')
+                valor = pag.get('valor', 0)
+                status = pag.get('status', '')
+                emoji = '🔴' if status == 'inadimplente' else '🔔'
                 
-                with col1:
-                    st.markdown(f"**{cor} {aluno_nome}**")
-                
-                with col2:
-                    st.write(f"📅 {ym}")
-                
-                with col3:
-                    st.write(f"💵 R$ {valor:.2f}")
-                    st.caption(f"Venc: dia {data_vencimento:02d}")
-                
-                with col4:
-                    st.write(f"**{status_texto}**")
-                
-                with col5:
-                    if st.button("✏️", key=f"edit_{pagamento.get('id')}", help="Editar"):
-                        st.session_state.pagamento_editando = pagamento.get('id')
+                c_info, c_pagar, c_editar = st.columns([5, 2, 1])
+                with c_info:
+                    st.markdown(f"{emoji} **{nome}** — {pag.get('ym', '')} — R$ {valor:.2f}")
+                with c_pagar:
+                    if st.button("💰 Pago", key=f"pag_pagar_{pag_id}", use_container_width=True):
+                        try:
+                            pagamentos_service.marcar_como_pago(pag_id)
+                            cache_manager.invalidate_pagamento_cache(pag.get('ym'))
+                            st.toast(f"✅ {nome} marcado como pago!")
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"Erro: {e}")
+                with c_editar:
+                    if st.button("✏️", key=f"edit_{pag_id}", help="Editar"):
+                        st.session_state.pagamento_editando = pag_id
                         st.session_state.pagamentos_modo = 'editar'
                         st.rerun()
-                
-                st.divider()
         
     except Exception as e:
         st.error(f"❌ Erro ao carregar pagamentos: {str(e)}")
@@ -288,16 +294,14 @@ def _mostrar_lista_pagamentos(pagamentos_service: PagamentosService, alunos_serv
     
     with col1:
         termo_busca = st.text_input(
-            "🔍 Digite o nome do aluno:",
+            "Digite o nome do aluno:",
             placeholder="Ex: João Silva, Maria...",
-            help="Digite pelo menos 2 caracteres para buscar"
+            help="Digite pelo menos 2 caracteres para buscar",
+            key="pag_busca_nome"
         )
     
     with col2:
         st.write("") # Spacer
-        limpar_busca = st.button("🗑️ Limpar", use_container_width=True)
-        if limpar_busca:
-            st.rerun()
     
     # Se não há termo de busca, mostrar instruções
     if not termo_busca or len(termo_busca.strip()) < 2:
@@ -481,8 +485,9 @@ def _mostrar_formulario_editar_pagamento(pagamentos_service: PagamentosService, 
                     data_vencimento_atual = date.today()
                 
                 nova_data_vencimento = st.date_input(
-                    "📅 Data Vencimento:",
-                    value=data_vencimento_atual
+                    "Data Vencimento:",
+                    value=data_vencimento_atual,
+                    format="DD/MM/YYYY"
                 )
                 
                 # Data de pagamento (se pago)
@@ -496,9 +501,10 @@ def _mostrar_formulario_editar_pagamento(pagamentos_service: PagamentosService, 
                     data_pag_inicial = None
                 
                 nova_data_pagamento = st.date_input(
-                    "💳 Data Pagamento:",
+                    "Data Pagamento:",
                     value=data_pag_inicial,
-                    help="Data em que o pagamento foi realizado (opcional)"
+                    help="Data em que o pagamento foi realizado",
+                    format="DD/MM/YYYY"
                 )
             
             # Observações
@@ -656,39 +662,47 @@ def _mostrar_formulario_novo_pagamento(pagamentos_service: PagamentosService, al
             )
             
             hoje = date.today()
-            mes_ref = st.number_input("📅 Mês de Referência *", min_value=1, max_value=12, value=hoje.month)
             modo = st.session_state.get('data_mode', 'operacional')
             min_ano_ref = 2026 if modo == 'operacional' else 2020
-            ano_ref = st.number_input("📅 Ano de Referência *", min_value=min_ano_ref, max_value=2030, value=max(hoje.year, min_ano_ref))
+            
+            # Selectbox único mês/ano
+            _nomes_meses = {
+                1: 'Janeiro', 2: 'Fevereiro', 3: 'Março', 4: 'Abril',
+                5: 'Maio', 6: 'Junho', 7: 'Julho', 8: 'Agosto',
+                9: 'Setembro', 10: 'Outubro', 11: 'Novembro', 12: 'Dezembro'
+            }
+            opcoes_ym = []
+            for a in range(min_ano_ref, hoje.year + 2):
+                for m in range(1, 13):
+                    opcoes_ym.append((a, m, f"{a}-{m:02d} ({_nomes_meses[m]})"))
+            
+            # Default: mês atual
+            default_idx = next(
+                (i for i, (a, m, _) in enumerate(opcoes_ym) if a == max(hoje.year, min_ano_ref) and m == hoje.month),
+                0
+            )
+            ym_selecionado = st.selectbox(
+                "📅 Mês/Ano de Referência *",
+                options=opcoes_ym,
+                index=default_idx,
+                format_func=lambda x: x[2],
+            )
+            ano_ref = ym_selecionado[0]
+            mes_ref = ym_selecionado[1]
         
         with col2:
             valor = st.number_input("💰 Valor (R$) *", min_value=0.01, step=0.01, format="%.2f", value=150.0)
             
             status = st.selectbox(
                 "📊 Status *",
-                options=["pago", "inadimplente", "ausente"],
+                options=["pago", "devedor", "inadimplente", "ausente"],
                 index=0,
                 help="Status do pagamento"
             )
         
-        # Opções adicionais
-        st.markdown("#### ⚙️ Opções")
-        exigivel = st.checkbox("💳 Exigível (conta para cobrança)", value=True, 
-                              help="Se desmarcado, não será considerado para cálculo de inadimplência")
-        
-        # Observações
-        observacoes = st.text_area("📝 Observações", placeholder="Observações sobre o pagamento (opcional)")
-        
         # Botões
         st.markdown("---")
-        col1, col2 = st.columns([1, 3])
-        
-        with col1:
-            submitted = st.form_submit_button("✅ Registrar", type="primary", use_container_width=True)
-        
-        with col2:
-            if st.form_submit_button("🔄 Limpar", use_container_width=True):
-                st.rerun()
+        submitted = st.form_submit_button("✅ Registrar", type="primary", use_container_width=True)
         
         # Processar formulário
         if submitted:
@@ -739,11 +753,8 @@ def _mostrar_formulario_novo_pagamento(pagamentos_service: PagamentosService, al
                 'mes': mes_ref,
                 'valor': valor,
                 'status': status,
-                'exigivel': exigivel
+                'exigivel': True
             }
-            
-            if observacoes.strip():
-                dados_pagamento['observacoes'] = observacoes.strip()
             
             # Registrar pagamento
             try:
@@ -790,7 +801,7 @@ def _mostrar_devedores(pagamentos_service: PagamentosService):
 
             meses_opcoes.append(mes_ano)
         
-        mes_filtro = st.selectbox("📅 Filtrar por mês:", options=meses_opcoes, index=1 if len(meses_opcoes) > 1 else 0)
+        mes_filtro = st.selectbox("📅 Filtrar por mês:", options=meses_opcoes, index=1 if len(meses_opcoes) > 1 else 0, key="pag_dev_mes")
     
     # Carregar devedores
     try:
@@ -882,7 +893,7 @@ def _mostrar_inadimplentes(pagamentos_service: PagamentosService):
 
             meses_opcoes.append(mes_ano)
         
-        mes_filtro = st.selectbox("📅 Filtrar por mês:", options=meses_opcoes, index=1 if len(meses_opcoes) > 1 else 0)
+        mes_filtro = st.selectbox("📅 Filtrar por mês:", options=meses_opcoes, index=1 if len(meses_opcoes) > 1 else 0, key="pag_inadim_mes")
     
     # Carregar inadimplentes
     try:
@@ -939,101 +950,6 @@ def _mostrar_inadimplentes(pagamentos_service: PagamentosService):
         
     except Exception as e:
         st.error(f"❌ Erro ao carregar inadimplentes: {str(e)}")
-
-def _mostrar_devedores(pagamentos_service: PagamentosService):
-    """Mostra lista de devedores (a cobrar)"""
-    
-    st.markdown("### 🔔 Lista de Devedores (A Cobrar)")
-    st.info("💡 **Devedores** são pagamentos que entraram no período de cobrança mas ainda não venceram. São lembretes para cobrança preventiva.")
-    
-    # Filtro de mês
-    col1, col2 = st.columns([1, 3])
-    
-    with col1:
-        # Gerar opções de mês/ano
-        hoje = date.today()
-        modo = st.session_state.get('data_mode', 'operacional')
-        min_ym = "2026-01" if modo == 'operacional' else "2024-01"
-        meses_opcoes = ["Todos os meses"]
-        for i in range(6):  # Últimos 6 meses
-            if i == 0:
-                mes_ano = f"{hoje.year:04d}-{hoje.month:02d}"
-            else:
-                mes = hoje.month - i
-                ano = hoje.year
-                if mes <= 0:
-                    mes += 12
-                    ano -= 1
-                mes_ano = f"{ano:04d}-{mes:02d}"
-
-            if mes_ano < min_ym:
-                continue
-
-            meses_opcoes.append(mes_ano)
-        
-        mes_filtro = st.selectbox("📅 Filtrar por mês:", options=meses_opcoes, index=1 if len(meses_opcoes) > 1 else 0)
-    
-    # Carregar devedores
-    try:
-        if mes_filtro == "Todos os meses":
-            devedores = pagamentos_service.obter_devedores()
-        else:
-            devedores = pagamentos_service.obter_devedores(ym=mes_filtro)
-        
-        if not devedores:
-            st.success("🎉 Nenhum devedor encontrado! Todos em dia ou já inadimplentes.")
-            return
-        
-        # Exibir devedores
-        st.warning(f"🔔 **{len(devedores)} pagamento(s) a cobrar**")
-        
-        for pagamento in devedores:
-            with st.container():
-                col1, col2, col3 = st.columns([2, 2, 1])
-                
-                with col1:
-                    st.markdown(f"**🔔 {pagamento.get('alunoNome', 'N/A')}**")
-                    st.markdown(f"📅 Referente a: {pagamento.get('ym', 'N/A')}")
-                
-                with col2:
-                    st.markdown(f"💰 Valor: R$ {pagamento.get('valor', 0):.2f}")
-                    
-                    # Mostrar dia de vencimento e carência
-                    vencimento = pagamento.get('dataVencimento', 15)
-                    carencia = pagamento.get('carenciaDias', 3)
-                    st.markdown(f"📅 Vencimento: dia {vencimento:02d} (+ {carencia} dias)")
-                    
-                    # Calcular quando vira inadimplente
-                    try:
-                        ano, mes = map(int, pagamento.get('ym', '2024-01').split('-'))
-                        data_vencimento = date(ano, mes, vencimento)
-                        data_inadimplencia = data_vencimento + timedelta(days=carencia)
-                        dias_restantes = (data_inadimplencia - date.today()).days
-                        
-                        if dias_restantes > 0:
-                            st.caption(f"⏰ {dias_restantes} dias até vencer")
-                        else:
-                            st.caption(f"⏰ Venceu há {abs(dias_restantes)} dias")
-                    except:
-                        st.caption("⏰ Verificar vencimento")
-                
-                with col3:
-                    if st.button("💰 Pagar", key=f"pagar_dev_{pagamento.get('id')}", use_container_width=True):
-                        if pagamentos_service.marcar_como_pago(pagamento.get('id')):
-                            # Invalidar cache de pagamentos
-                            cache_manager = get_cache_manager()
-                            cache_manager.invalidate_pagamento_cache(pagamento.get('ym'))
-                            st.success("Pagamento registrado!")
-                            st.rerun()
-                
-                st.markdown("---")
-        
-        # Resumo financeiro
-        valor_total_devedores = sum(p.get('valor', 0) for p in devedores)
-        st.warning(f"💰 **Total a cobrar: R$ {valor_total_devedores:.2f}**")
-        
-    except Exception as e:
-        st.error(f"❌ Erro ao carregar devedores: {str(e)}")
 
 def _mostrar_estatisticas_pagamentos(pagamentos_service: PagamentosService):
     """Mostra estatísticas de pagamentos"""
@@ -1137,11 +1053,27 @@ def _mostrar_estatisticas_pagamentos(pagamentos_service: PagamentosService):
                 ]
             })
             
-            st.bar_chart(chart_data.set_index('Status')['Quantidade'])
+            max_qtd = chart_data['Quantidade'].max()
+            for _, row in chart_data.iterrows():
+                col_n, col_b, col_v = st.columns([2, 5, 1])
+                with col_n:
+                    st.markdown(f"**{row['Status']}**")
+                with col_b:
+                    st.progress(row['Quantidade'] / max_qtd if max_qtd > 0 else 0)
+                with col_v:
+                    st.markdown(f"**{int(row['Quantidade'])}**")
         
         with col2:
             st.markdown("#### 💵 Valores por Status")
-            st.bar_chart(chart_data.set_index('Status')['Valor'])
+            max_val = chart_data['Valor'].max()
+            for _, row in chart_data.iterrows():
+                col_n, col_b, col_v = st.columns([2, 5, 1])
+                with col_n:
+                    st.markdown(f"**{row['Status']}**")
+                with col_b:
+                    st.progress(row['Valor'] / max_val if max_val > 0 else 0)
+                with col_v:
+                    st.markdown(f"**R$ {row['Valor']:.0f}**")
         
         # Lista detalhada
         if st.checkbox("📋 Mostrar detalhes dos pagamentos"):

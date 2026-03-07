@@ -227,11 +227,25 @@ def main():
         with st.sidebar:
             st.markdown("### 📋 Navegação")
             
-            # Logout
-            if st.button("🚪 Logout", type="secondary", use_container_width=True):
-                logger.info("👤 Usuário fez logout")
-                auth_manager.logout()
-                st.rerun()
+            # ── Busca global de aluno ──
+            busca_termo = st.text_input("🔍 Buscar aluno", placeholder="Digite o nome...", key="sidebar_busca_aluno")
+            if busca_termo and len(busca_termo.strip()) >= 2:
+                try:
+                    from services.alunos_service import AlunosService
+                    if 'alunos_service' not in st.session_state:
+                        st.session_state.alunos_service = AlunosService()
+                    resultados = st.session_state.alunos_service.buscar_alunos_por_nome(busca_termo)[:5]
+                    if resultados:
+                        for r in resultados:
+                            label = f"{r.get('nome', '?')} ({r.get('turma', '—')})"
+                            if st.button(label, key=f"busca_{r['id']}", use_container_width=True):
+                                st.session_state.current_page = "👥 Alunos"
+                                st.session_state.busca_aluno_id = r['id']
+                                st.rerun()
+                    else:
+                        st.caption("Nenhum resultado.")
+                except Exception:
+                    pass
             
             st.divider()
             
@@ -289,6 +303,15 @@ def main():
                 if st.button("Abrir histórico", use_container_width=True):
                     st.session_state.current_page = "🏠 Dashboard"
                     st.session_state.data_mode = 'historico'
+                    st.rerun()
+            
+            # Logout discreto no rodapé da sidebar
+            st.divider()
+            col_spacer, col_logout = st.columns([3, 2])
+            with col_logout:
+                if st.button("Sair", key="btn_logout", type="secondary"):
+                    logger.info("👤 Usuário fez logout")
+                    auth_manager.logout()
                     st.rerun()
         
         page = st.session_state.current_page

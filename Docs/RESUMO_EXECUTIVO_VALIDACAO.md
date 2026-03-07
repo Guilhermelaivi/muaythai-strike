@@ -1,6 +1,6 @@
 # 🎯 RESUMO EXECUTIVO - Validação de Requisitos
 
-**Sistema:** Spirith Muay thai - MVP Muay Thai  
+**Sistema:** Spirit Muay thai - MVP Muay Thai  
 **Data:** 20/11/2025  
 **Status:** ⚠️ AGUARDANDO VALIDAÇÃO CLIENTE
 
