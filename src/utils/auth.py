@@ -264,15 +264,15 @@ class AuthManager:
         try:
             # Configurar credenciais - Gestor (spiritthai)
             gestor_username = os.getenv("STREAMLIT_GESTOR_USERNAME", "spiritthai")
-            gestor_email = os.getenv("STREAMLIT_GESTOR_EMAIL", "gestor@spirit.com")
+            gestor_email = os.getenv("STREAMLIT_GESTOR_EMAIL", "gestor@spiritthai.com")
             gestor_name = os.getenv("STREAMLIT_GESTOR_NAME", "Spirit Thai")
-            gestor_password = os.getenv("STREAMLIT_GESTOR_PASSWORD_HASH", "$2b$12$ISWNgl5owpHMJotnla6S/.cOiEHOcZ4h4gse1I8Ksh0ya840XoB1y")
+            gestor_password = os.getenv("STREAMLIT_GESTOR_PASSWORD_HASH", "$2b$12$ynvdrwHkDiicKo1CYwt.xus2OoFClxkL2zUI0.Wr0y9.RLJpeRGWe")
             
             # Configurar credenciais - Dev/Admin (ravin)
             dev_username = os.getenv("STREAMLIT_DEV_USERNAME", "ravin")
-            dev_email = os.getenv("STREAMLIT_DEV_EMAIL", "ravin@spirit  .com")
+            dev_email = os.getenv("STREAMLIT_DEV_EMAIL", "ravin@spiritthai.com")
             dev_name = os.getenv("STREAMLIT_DEV_NAME", "Ravin")
-            dev_password = os.getenv("STREAMLIT_DEV_PASSWORD_HASH", "$2b$12$hgyAl6.tXrJi8Br.gtPV1u9VDDTH6nCF11LkWX217fSCbQFjheLRO")
+            dev_password = os.getenv("STREAMLIT_DEV_PASSWORD_HASH", "$2b$12$4gQXIIIbNU5s2bH2SMcdPuM1bqh8uFIL.j/adqW/yTpYXYI3QKjN2")
             
             self.credentials = {
                 "usernames": {
