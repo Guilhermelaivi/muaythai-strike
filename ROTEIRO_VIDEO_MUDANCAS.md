@@ -1,176 +1,200 @@
-# Roteiro de Apresentação — Novas Funcionalidades Spirit Muay Thai
+# Roteiro de Apresentação — Sistema Spirit Muay Thai
 
-> **Objetivo:** Guiar a gravação de um vídeo explicativo para o gestor da academia, apresentando todas as melhorias implementadas, com foco no impacto no dia a dia e na redução de cliques.
-
----
-
-## 1. Visão Geral das Mudanças
-
-**Resumo para o gestor:**
-Todas as alterações foram pensadas para acelerar o trabalho diário — menos telas, menos cliques, informação certa na hora certa. O sistema agora funciona como um painel de controle rápido da academia, e não como um formulário burocrático.
+> **Objetivo:** Guiar a gravação de um vídeo para o gestor validar o sistema antes de ir para produção. O foco é mostrar cada funcionalidade, como usar, e as regras de negócio automatizadas.
 
 ---
 
-## 2. Sidebar — Navegação Mais Limpa
+## 1. Abertura (30s)
 
-### O que mudou
-- O botão **Logout** foi movido para o rodapé da sidebar, discreto e fora do caminho.
-- A busca global de alunos continua no topo — digitou o nome, já acessa a ficha do aluno direto.
-- Organização por prioridade: **Dashboard → Alunos → Presenças → Pagamentos → Turmas → Graduações → Histórico**.
+**O que falar:**
+> "Esse é o sistema de gestão da Spirit Muay Thai. Ele foi desenhado pra ser rápido — tudo o que você precisa tá a 1 ou 2 cliques. Vou mostrar tela por tela, começando pelo dashboard."
 
-### Por que importa
-> "Antes o botão de sair competia visualmente com os menus principais. Agora o foco está 100% nas ações que você realmente usa no dia a dia."
+**O que mostrar:** Tela de login → digitar credenciais → entrar no dashboard.
 
 ---
 
-## 3. Dashboard — Visão Executiva em Segundos
+## 2. Sidebar — Navegação (30s)
 
 ### O que mostrar
-- **5 KPIs no topo:** Receita do Mês, A Cobrar, Inadimplentes, Alunos Ativos, Presenças.
-- **3 Ações Rápidas (1 clique):** Registrar Presença, Novo Pagamento, Novo Aluno — direto da tela inicial.
-- **Seção Devedores:** Lista quem está devendo com botão "💰 Marcar Pago" inline e link direto pro WhatsApp do aluno.
+- Menu lateral com as páginas: **Dashboard → Alunos → Presenças → Pagamentos → Turmas → Graduações**.
+- **Busca global** no topo da sidebar — digitar parte do nome de um aluno e clicar nele para abrir a ficha 360°.
+- **Botão "Sair"** discreto no rodapé da sidebar.
 
-### O que foi removido (simplificação)
-- Gráficos de Evolução de Receita e Status de Alunos foram removidos para deixar a tela mais rápida e focada no que importa: ação imediata.
-- O botão de Graduação foi removido das ações rápidas (raramente usado no dia a dia).
-
-### Regra de negócio
-> "O dashboard responde à pergunta: **quanto recebi, quanto falta receber, e quem precisa ser cobrado?** Tudo sem sair da primeira tela."
+### O que falar
+> "A navegação é pela sidebar. No topo você pode buscar qualquer aluno pelo nome — isso já abre a ficha completa dele. O botão de sair fica embaixo, fora do caminho."
 
 ---
 
-## 4. Alunos — Cadastro Rápido e Ficha 360°
+## 3. Dashboard — Painel de Controle (1min30s)
 
-### 4.1 Cadastro Rápido (10 segundos)
-- **Apenas 3 campos:** Nome, Turma e Telefone.
-- Ideal para quando o aluno acabou de chegar e você precisa registrar rapidamente.
-- Se precisar de mais dados (endereço, responsável, nascimento), basta expandir o **Formulário Completo**.
-- Agora existe um **botão "← Voltar ao Cadastro Rápido"** no formulário completo para não ficar preso nele.
+### O que mostrar
+1. **5 KPIs no topo:** Receita do Mês, A Cobrar, Inadimplentes, Alunos Ativos, Presenças.
+2. **Seletor de ano/mês** — mudar o mês e ver os KPIs atualizarem (com spinner de carregamento).
+3. **3 Ações Rápidas:** Registrar Presença, Novo Pagamento, Novo Aluno — clicar em um deles para demonstrar.
+4. **Cobranças Pendentes:** Cards com borda mostrando cada devedor com:
+   - Nome e valor
+   - Link direto pro WhatsApp
+   - Botão "💰 Pago" para registrar pagamento em 1 clique
 
-### 4.2 Edição de Alunos — Feedback Visual
-- Ao salvar alterações de um aluno, agora aparece uma **notificação toast** confirmando que foi salvo.
-- Antes a mensagem de sucesso sumia instantaneamente — agora o gestor tem certeza de que salvou.
-
-### 4.3 Ficha 360° do Aluno (4 abas)
-- **Dados:** Nome, status, turma, contato, responsável.
-- **Pagamentos:** Histórico completo com ação rápida "Marcar Pago" nos pendentes.
-- **Presenças:** Resumo mensal de presenças e faltas.
-- **Graduações:** Histórico completo de faixas.
-
-### O que foi limpo nos formulários
-- Emojis removidos dos labels dos campos (Nome Completo, Telefone, Email, etc.) — visual mais limpo e profissional.
-- Texto "(opcional)" removido de campos secundários — menos poluição visual.
-- Botões "Limpar" desnecessários foram removidos.
-
-### Regra de negócio
-> "Com 3 campos você cadastra, com 1 clique você acessa tudo do aluno. A ficha 360° substitui a planilha — pagamentos, presenças e graduações, tudo num lugar só."
+### O que falar
+> "O dashboard responde três perguntas: quanto recebi, quanto falta, e quem preciso cobrar. Cada devedor aparece num card — você pode apertar o WhatsApp pra mandar mensagem ou apertar Pago se já recebeu. Sem abrir outra tela."
 
 ---
 
-## 5. Presenças — Chamada Invertida
+## 4. Alunos — Cadastro e Ficha 360° (2min)
 
-### Como funciona
-- Selecione a **turma** e a **data** (formato DD/MM/YYYY).
-- **Todos os alunos já aparecem como presentes por padrão.**
-- Você só marca quem **faltou** — muito mais rápido que marcar quem veio.
-- Ao salvar, todos os registros são gravados de uma vez (batch).
+### 4.1 Mostrar Cadastro Rápido
+- Clicar na aba "Cadastrar" → mostrar o formulário com **3 campos principais**: Nome, Turma, Telefone.
+- Mencionar que Vencimento e Status já vêm preenchidos (dia 15, ativo).
+- Mostrar o link "Formulário Completo" que expande para dados adicionais (endereço, responsável, nascimento).
+- Mostrar o botão **"← Voltar ao Cadastro Rápido"** no formulário completo.
 
-### O que foi melhorado
-- Datas no formato brasileiro (DD/MM/YYYY) em todos os campos.
-- Ao trocar de data ou turma, os checkboxes agora refletem corretamente o que já foi salvo naquela data — não mantém estado de outra data.
+### 4.2 Mostrar Lista de Alunos
+- Filtros: por status (ativo/inativo), por turma, por vencimento.
+- Clicar em "Ver Ficha" de um aluno.
 
-### Regra de negócio
-> "Numa turma de 15 alunos onde 2 faltaram, você marca 2 checkboxes em vez de 13. É a chamada invertida — foco em quem faltou."
+### 4.3 Mostrar Ficha 360°
+- **Aba Dados:** Status, turma, contato, vencimento, responsável.
+- **Aba Pagamentos:** Histórico com botão "💰 Pago" nos pendentes.
+- **Aba Presenças:** Presenças e faltas do mês.
+- **Aba Graduações:** Histórico de faixas.
 
----
+### 4.4 Mostrar Edição
+- Editar algum campo de um aluno → salvar → mostrar o **toast de confirmação** que aparece.
 
-## 6. Pagamentos — Cobrança com 1 Clique
-
-### Estrutura em 4 abas
-1. **Todos:** Lista unificada com filtros (status, turma, mês, busca por nome).
-2. **A Cobrar:** Quem está próximo do vencimento.
-3. **Inadimplentes:** Quem já passou do prazo.
-4. **Cadastrar:** Novo pagamento com campo de mês unificado (ex: "2026-03 (Março)").
-
-### Ações rápidas nos pendentes
-- Na lista de pagamentos pendentes, cada registro tem o botão **"💰 Pago"** direto na linha.
-- Um clique marca como pago, exibe o toast de confirmação e atualiza a lista.
-
-### O que foi removido
-- A seção "Opções" (Exigível + Observações) no formulário de novo pagamento foi removida — pagamento é sempre exigível.
-- Botão "Limpar" na busca foi removido (basta apagar o texto).
-
-### Estatísticas com barras visuais
-- Os gráficos foram substituídos por **barras de progresso** — mais leves, sem erro de compatibilidade, e mais fáceis de ler rapidamente.
-
-### Regra de negócio
-> "O fluxo é: olhou no dashboard quem está devendo → clicou no WhatsApp pra cobrar → quando pagou, 1 clique pra registrar. Sem abrir formulários."
+### O que falar
+> "Cadastro rápido em 10 segundos — nome, turma e telefone. Se precisar de mais dados, expande o formulário completo. A ficha 360° reúne tudo do aluno num lugar só: pagamentos, presenças e graduações."
 
 ---
 
-## 7. Graduações — Promoção em Lote
+## 5. Presenças — Chamada Invertida (1min)
 
-### Como funciona
-- Selecione a **turma**, o **novo nível** (faixa), a **data da graduação**.
-- Marque os alunos que serão promovidos (pode selecionar todos de uma vez).
-- O botão mostra dinamicamente: **"🥋 Promover X alunos para [nível]"**.
-- Um clique promove todos os selecionados.
+### O que mostrar
+1. Selecionar a **turma** e a **data** (formato DD/MM/YYYY).
+2. Mostrar que **todos os alunos já aparecem como presentes**.
+3. Desmarcar 1 ou 2 alunos que faltaram.
+4. Clicar "Salvar" → toast de confirmação.
 
-### Regra de negócio
-> "No dia da graduação, em vez de editar aluno por aluno, você seleciona a turma inteira e promove em lote. Processo que levava 30 minutos agora leva 30 segundos."
-
----
-
-## 8. Turmas — Cadastro Simples
-
-### Funcionalidades
-- Lista de turmas com informações de horário e dias da semana.
-- Cada turma pode ser ativada/desativada com um botão.
-- Cadastro de nova turma: nome, horários, dias da semana, descrição.
-
-### Regra de negócio
-> "Turmas são a base de tudo — presenças, filtros de alunos e pagamentos usam a turma como referência. Mantenha-as atualizadas."
+### O que falar
+> "A chamada é invertida: todo mundo começa como presente, você só marca quem faltou. Numa turma de 15 onde 2 faltaram, são 2 cliques em vez de 13."
 
 ---
 
-## 9. Estatísticas de Alunos — Visualização Rápida
+## 6. Pagamentos — O Coração do Sistema (3min)
 
-### O que mostra
-- **Cards:** Total de alunos, ativos, inativos, número de turmas.
-- **Distribuição por turma:** Barras visuais mostrando quantos alunos em cada turma.
-- **Análise de vencimentos:** Quais dias do mês concentram mais vencimentos.
+**Essa é a parte mais importante do vídeo.** Mostrar as 4 abas com calma.
 
-### Regra de negócio
-> "Se o dia 15 tem 20 vencimentos e o dia 10 tem 5, considere redistribuir novos alunos para equilibrar o fluxo de caixa."
+### 6.1 Aba "Todos"
+- Mostrar a lista com filtros: por mês, por turma, por status, busca por nome.
+- Mostrar um expander de aluno com seus pagamentos e o botão "💰 Pago".
+
+### 6.2 Aba "A Cobrar" ⭐ REGRA AUTOMÁTICA
+**Mostrar e explicar a regra:**
+
+O sistema calcula automaticamente quem deve ser cobrado, baseado no dia do mês:
+- **Dia 1 a 10:** Mostra alunos com vencimento dia **10** que ainda não pagaram
+- **Dia 11 a 15:** Mostra alunos com vencimento dia **15** que ainda não pagaram
+- **Dia 16 a 25:** Mostra alunos com vencimento dia **25** que ainda não pagaram
+- **Após dia 25:** Aba vazia — todos os vencimentos já passaram pro mês
+
+Cada aluno aparece num **card com borda** contendo:
+- Nome, turma, dia do vencimento
+- Link pro WhatsApp
+- Botão "💰 Registrar Pgto" (registra como pago em 1 clique)
+
+Mostra também um contador de dias restantes pro vencimento.
+
+### O que falar
+> "Essa aba é 100% automática. Você não precisa filtrar nem calcular nada. O sistema sabe que hoje é dia X, então mostra só quem precisa ser cobrado agora. Quando o aluno pagar, um clique e some da lista."
+
+### 6.3 Aba "Inadimplentes" ⭐ REGRA AUTOMÁTICA
+**Mostrar e explicar a regra:**
+
+O sistema calcula automaticamente quem está inadimplente:
+- Se hoje é dia **11:** alunos com vencimento dia 10 que não pagaram → inadimplentes
+- Se hoje é dia **16:** alunos com vencimento dia 10 **e** 15 sem pagamento → inadimplentes
+- Se hoje é dia **26:** alunos com vencimento dia 10, 15 **e** 25 sem pagamento → inadimplentes
+
+A lista agrupa por dia de vencimento e mostra **quantos dias de atraso** cada um tem. Cada aluno tem o botão "💰 Registrar Pgto" no card.
+
+### O que falar
+> "Inadimplentes são calculados automaticamente — passou do dia de vencimento e não pagou, aparece aqui. O agrupamento por dia de vencimento facilita a cobrança em bloco."
+
+### 6.4 Aba "Cadastrar"
+- Mostrar o formulário: selecionar aluno (com filtro por turma), mês, valor.
+- O **status sempre é 'pago'** — não tem seletor de status porque pagamento cadastrado manualmente é porque já foi recebido.
+- O seletor de mês limita até o **mês atual** (não mostra meses futuros).
+
+### O que falar
+> "Essa aba é pra registrar um pagamento que você já recebeu. Por isso o status é sempre pago — se o aluno não pagou, ele aparece automaticamente nas abas A Cobrar ou Inadimplentes."
 
 ---
 
-## 10. Melhorias Técnicas (para contexto)
+## 7. Graduações — Promoção em Lote (45s)
 
-| Melhoria | Impacto para o gestor |
-|----------|----------------------|
-| Datas em DD/MM/YYYY | Formato brasileiro em todas as telas |
-| Toast de confirmação | Sempre sabe quando algo foi salvo |
-| Barras visuais no lugar de gráficos | Carregamento mais rápido, sem erros |
-| Cache inteligente | Dados atualizam imediatamente após ações |
-| Formulários limpos | Menos campos visíveis = menos confusão |
-| Busca global na sidebar | Achou o nome, achou o aluno — direto |
+### O que mostrar
+1. Selecionar a **turma**, o **novo nível** (faixa), a **data da graduação**.
+2. Marcar os alunos que serão promovidos (mostrar "Selecionar Todos").
+3. Botão dinâmico: **"🥋 Promover X alunos para [nível]"**.
+4. Clicar e mostrar confirmação.
+
+### O que falar
+> "No dia da graduação, seleciona a turma, escolhe a faixa nova, marca quem passou e promove todo mundo de uma vez. Nada de editar aluno por aluno."
 
 ---
 
-## 11. Resumo de Ganhos
+## 8. Turmas — Base do Sistema (30s)
+
+### O que mostrar
+- Lista de turmas com horários e dias da semana.
+- Botão para ativar/desativar turma.
+- Cadastro de nova turma.
+
+### O que falar
+> "Turmas são a referência do sistema — presenças, pagamentos e filtros de alunos usam a turma. Mantenha atualizadas."
+
+---
+
+## 9. Estatísticas (30s)
+
+### O que mostrar
+- Na página de Alunos, aba "Estatísticas": cards com totais + barras visuais de distribuição por turma e vencimentos.
+- Na página de Pagamentos, aba ao final: estatísticas mensais com barras de progresso.
+
+### O que falar
+> "As estatísticas mostram rapidamente como está a distribuição de alunos e pagamentos. As barras visuais são diretas — sem gráfico complexo."
+
+---
+
+## 10. Resumo Visual de Melhorias
+
+| Recurso | Como funciona |
+|---------|---------------|
+| Spinner de carregamento | Indicação visual enquanto dados carregam |
+| Toast de confirmação | Notificação flutuante ao salvar/registrar |
+| Cards com borda | Devedores e inadimplentes em cards separados e organizados |
+| Barras de progresso | Estatísticas visuais leves e rápidas |
+| Busca global na sidebar | Digita o nome → abre a ficha do aluno |
+| Datas DD/MM/YYYY | Formato brasileiro em todos os campos |
+| Formulário limpo | Campos essenciais primeiro, detalhes opcionais |
+
+---
+
+## 11. Resumo de Ganhos para o Gestor
 
 | Antes | Agora |
 |-------|-------|
 | Cadastro de aluno: ~2 min (muitos campos) | Cadastro rápido: ~10 seg (3 campos) |
 | Marcar pagamento: abrir formulário + preencher | 1 clique no "💰 Pago" |
-| Chamada: marcar todos presentes um a um | Marcar só quem faltou |
+| Saber quem cobrar: procurar manualmente | Aba "A Cobrar" calculada automaticamente |
+| Saber quem está inadimplente: planilha Excel | Aba "Inadimplentes" calculada automaticamente |
+| Chamada: marcar todos presentes um a um | Marcar só quem faltou (chamada invertida) |
 | Graduação: editar aluno a aluno | Promoção em lote da turma toda |
-| Buscar aluno: navegar até a lista + filtrar | Digitar nome na sidebar |
+| Buscar aluno: navegar menus + filtrar | Digitar nome na sidebar |
 | Ver tudo do aluno: alternar entre páginas | Ficha 360° com 4 abas |
 
 ---
 
-## Encerramento sugerido
+## 12. Encerramento (15s)
 
-> "Essas mudanças transformam o sistema de um formulário administrativo em uma ferramenta operacional. O foco agora é velocidade: menos cliques, mais ação. Qualquer dúvida, estamos à disposição."
+> "Esse é o sistema pronto. A cobrança é automática — o sistema calcula quem pagar e quem está atrasado. O gestor só precisa agir: cobrar pelo WhatsApp e registrar o pagamento. Qualquer ajuste que precisar, a gente resolve antes de publicar."
