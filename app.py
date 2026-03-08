@@ -259,40 +259,8 @@ def main():
             
             st.divider()
             
-            # Páginas mais utilizadas
-            if st.session_state.data_mode != 'historico':
-                st.markdown("#### Mais Utilizados")
-                
-                if st.button("👥 Alunos", use_container_width=True,
-                            type="primary" if st.session_state.current_page == "👥 Alunos" else "secondary"):
-                    st.session_state.current_page = "👥 Alunos"
-                    st.rerun()
-                
-                if st.button("✅ Presenças", use_container_width=True,
-                            type="primary" if st.session_state.current_page == "✅ Presenças" else "secondary"):
-                    st.session_state.current_page = "✅ Presenças"
-                    st.rerun()
-                
-                if st.button("💰 Pagamentos", use_container_width=True,
-                            type="primary" if st.session_state.current_page == "💰 Pagamentos" else "secondary"):
-                    st.session_state.current_page = "💰 Pagamentos"
-                    st.rerun()
-                
-                st.divider()
-                
-                # Páginas auxiliares
-                st.markdown("#### Outros")
-                
-                if st.button("👨‍👩‍👧‍👦 Turmas", use_container_width=True,
-                            type="primary" if st.session_state.current_page == "👨‍👩‍👧‍👦 Turmas" else "secondary"):
-                    st.session_state.current_page = "👨‍👩‍👧‍👦 Turmas"
-                    st.rerun()
-                
-                if st.button("🥋 Graduações", use_container_width=True,
-                            type="primary" if st.session_state.current_page == "🥋 Graduações" else "secondary"):
-                    st.session_state.current_page = "🥋 Graduações"
-                    st.rerun()
-            else:
+            # Navegação por páginas (oculta - acesso via Dashboard)
+            if st.session_state.data_mode == 'historico':
                 st.info("Modo histórico ativo: apenas consulta")
 
             st.divider()
@@ -334,9 +302,6 @@ def main():
         elif page == "💰 Pagamentos":
             from pages.pagamentos import show_pagamentos
             show_pagamentos()
-        elif page == "✅ Presenças":
-            from pages.presencas import show_presencas
-            show_presencas()
         elif page == "🥋 Graduações":
             from pages.graduacoes import show_graduacoes
             show_graduacoes()

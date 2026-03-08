@@ -104,31 +104,38 @@ def show_dashboard(mode: Optional[str] = None, forced_year: Optional[int] = None
         **dados_reais,
     }
     
-    # Métricas principais - 5 colunas para separar A Cobrar e Inadimplentes
-    col1, col2, col3, col4, col5 = st.columns(5)
+    # Métricas principais - 3 colunas
+    col1, col2, col3 = st.columns(3)
     
     with col1:
         periodo_label = "do Ano" if is_annual_view else "do Mês"
-        comparacao_label = "+12% vs ano anterior" if is_annual_view else "+12% vs mês anterior"
+        
+        # Calcular comparação real com mês anterior
+        comparacao_html = ""
+        if not is_annual_view:
+            receita_anterior = dados_reais.get('receita_mes_anterior')
+            if receita_anterior is not None:
+                receita_atual = dados_reais['receita']
+                if receita_anterior > 0:
+                    variacao = ((receita_atual - receita_anterior) / receita_anterior) * 100
+                    if variacao >= 0:
+                        comparacao_html = f'<small>📈 +{variacao:.0f}% vs mês anterior</small>'
+                    else:
+                        comparacao_html = f'<small>📉 {variacao:.0f}% vs mês anterior</small>'
+                elif receita_atual > 0:
+                    comparacao_html = '<small>📈 Novo vs mês anterior (R$ 0)</small>'
+                else:
+                    comparacao_html = '<small>➖ Sem variação vs mês anterior</small>'
         
         st.markdown("""
         <div class="metric-card">
             <h3>💰 Receita {}</h3>
             <h2 style="color: #28a745;">R$ {:.2f}</h2>
-            <small>📈 {}</small>
+            {}
         </div>
-        """.format(periodo_label, dados_reais['receita'], comparacao_label), unsafe_allow_html=True)
+        """.format(periodo_label, dados_reais['receita'], comparacao_html), unsafe_allow_html=True)
     
     with col2:
-        st.markdown("""
-        <div class="metric-card">
-            <h3>🔔 A Cobrar</h3>
-            <h2 style="color: #ffc107;">{}</h2>
-            <small>💰 R$ {:.2f}</small>
-        </div>
-        """.format(dados_reais['devedores'], dados_reais['valor_devedores']), unsafe_allow_html=True)
-    
-    with col3:
         st.markdown("""
         <div class="metric-card">
             <h3>🔴 Inadimplentes</h3>
@@ -137,7 +144,7 @@ def show_dashboard(mode: Optional[str] = None, forced_year: Optional[int] = None
         </div>
         """.format(dados_reais['inadimplentes'], dados_reais['valor_inadimplentes']), unsafe_allow_html=True)
     
-    with col4:
+    with col3:
         st.markdown("""
         <div class="metric-card">
             <h3>👥 Alunos Ativos</h3>
@@ -149,41 +156,19 @@ def show_dashboard(mode: Optional[str] = None, forced_year: Optional[int] = None
             dados_reais['percentual_ativos']
         ), unsafe_allow_html=True)
     
-    with col5:
-        presencas_label = "Presenças" if is_annual_view else "Presenças"
-        media_label = f"Média: {dados_reais['media_presencas_dia']:.1f}/dia" if not is_annual_view else f"Total no ano: {dados_reais['total_presencas']}"
-        
-        st.markdown("""
-        <div class="metric-card">
-            <h3>✅ {}</h3>
-            <h2 style="color: #17a2b8;">{}</h2>
-            <small>📅 {}</small>
-        </div>
-        """.format(
-            presencas_label,
-            dados_reais['total_presencas'],
-            media_label
-        ), unsafe_allow_html=True)
-    
     st.divider()
     
     # --- Ações Rápidas ---
     if effective_mode != 'historico':
         st.markdown("### ⚡ Ações Rápidas")
-        aq1, aq2, aq3 = st.columns(3)
+        aq1, aq2 = st.columns(2)
         with aq1:
-            if st.button("✅ Registrar Presença", use_container_width=True):
-                st.session_state.current_page = "✅ Presenças"
+            if st.button("👥 Gerenciamento de Alunos", use_container_width=True):
+                st.session_state.current_page = "👥 Alunos"
                 st.rerun()
         with aq2:
-            if st.button("💰 Novo Pagamento", use_container_width=True):
+            if st.button("💰 Cobranças", use_container_width=True):
                 st.session_state.current_page = "💰 Pagamentos"
-                st.session_state['pagamentos_modo'] = 'novo'
-                st.rerun()
-        with aq3:
-            if st.button("👥 Novo Aluno", use_container_width=True):
-                st.session_state.current_page = "👥 Alunos"
-                st.session_state['alunos_modo'] = 'novo'
                 st.rerun()
         st.divider()
 
@@ -196,7 +181,7 @@ def _mostrar_secao_devedores(ym: str, dados_reais: Dict[str, Any]):
     """Mostra lista de devedores/inadimplentes com ações rápidas (Marcar Pago, WhatsApp)"""
     total_pendentes = dados_reais.get('devedores', 0) + dados_reais.get('inadimplentes', 0)
     if total_pendentes == 0:
-        st.success("✅ Nenhum devedor ou inadimplente neste mês!")
+        st.success("✅ Nenhum inadimplente neste mês!")
         st.divider()
         return
 
@@ -408,12 +393,27 @@ def _get_real_data(ym: str, is_annual_view: bool = False, mode: str = 'operacion
                 inadimplentes = estatisticas_pag.get('total_inadimplentes', 0)
                 valor_devedores = estatisticas_pag.get('valor_devedores', 0.0)
                 valor_inadimplentes = estatisticas_pag.get('valor_inadimplencia', 0.0)
+                
+                # Calcular receita do mês anterior para comparação
+                try:
+                    parts = ym.split('-')
+                    ano_atual = int(parts[0])
+                    mes_atual = int(parts[1])
+                    if mes_atual == 1:
+                        ym_anterior = f"{ano_atual - 1}-12"
+                    else:
+                        ym_anterior = f"{ano_atual}-{mes_atual - 1:02d}"
+                    estat_anterior = cache_manager.get_estatisticas_pagamentos_cached(pagamentos_service, ym_anterior)
+                    receita_mes_anterior = estat_anterior.get('receita_total', 0.0)
+                except Exception:
+                    receita_mes_anterior = None
         except Exception:
             receita = 0.0
             devedores = 0
             inadimplentes = 0
             valor_devedores = 0.0
             valor_inadimplentes = 0.0
+            receita_mes_anterior = None
         
         # Dados de presenças (com cache) - modificado para suportar consulta anual
         try:
@@ -446,6 +446,7 @@ def _get_real_data(ym: str, is_annual_view: bool = False, mode: str = 'operacion
         
         return {
             'receita': receita,
+            'receita_mes_anterior': receita_mes_anterior if not is_annual_view else None,
             'devedores': devedores,
             'inadimplentes': inadimplentes,
             'valor_devedores': valor_devedores,

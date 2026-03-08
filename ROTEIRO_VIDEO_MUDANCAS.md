@@ -13,31 +13,37 @@
 
 ---
 
-## 2. Sidebar — Navegação (30s)
+## 2. Sidebar — Navegação Simplificada (30s)
 
 ### O que mostrar
-- Menu lateral com as páginas: **Dashboard → Alunos → Presenças → Pagamentos → Turmas → Graduações**.
+- Menu lateral **enxuto**: apenas **Dashboard** como página principal.
 - **Busca global** no topo da sidebar — digitar parte do nome de um aluno e clicar nele para abrir a ficha 360°.
+- **Modo Histórico** (expander) — permite consultar dados de 2024/2025 em modo somente leitura.
 - **Botão "Sair"** discreto no rodapé da sidebar.
+- **Não há mais** links diretos para Alunos, Presenças, Pagamentos, Turmas ou Graduações na sidebar — tudo é acessado via Dashboard (ações rápidas) ou busca global.
 
 ### O que falar
-> "A navegação é pela sidebar. No topo você pode buscar qualquer aluno pelo nome — isso já abre a ficha completa dele. O botão de sair fica embaixo, fora do caminho."
+> "A sidebar foi simplificada. O Dashboard centraliza tudo — ações rápidas levam direto pra onde você precisa. A busca global no topo abre a ficha completa de qualquer aluno. Menos cliques, menos confusão."
 
 ---
 
 ## 3. Dashboard — Painel de Controle (1min30s)
 
 ### O que mostrar
-1. **5 KPIs no topo:** Receita do Mês, A Cobrar, Inadimplentes, Alunos Ativos, Presenças.
+1. **4 KPIs no topo:** Receita do Mês, A Cobrar, Inadimplentes, Alunos Ativos.
+   - **Receita do Mês:** agora mostra a **variação % real** em relação ao mês anterior (📈 +X% ou 📉 -X%), calculada automaticamente.
+   - **A Cobrar:** exibe nota "⚠️ Regra a definir com PO" até que as regras de negócio sejam validadas.
+   - **Presenças:** removido do dashboard (funcionalidade oculta).
 2. **Seletor de ano/mês** — mudar o mês e ver os KPIs atualizarem (com spinner de carregamento).
-3. **3 Ações Rápidas:** Registrar Presença, Novo Pagamento, Novo Aluno — clicar em um deles para demonstrar.
-4. **Cobranças Pendentes:** Cards com borda mostrando cada devedor com:
+3. **2 Ações Rápidas:** **Gerenciamento de Alunos → Cobranças** — cada botão leva direto à página correspondente.
+4. **Cobranças Pendentes:** Cards com borda mostrando cada inadimplente com:
    - Nome e valor
    - Link direto pro WhatsApp
-   - Botão "💰 Pago" para registrar pagamento em 1 clique
+   - Botão "💰 Registrar Pgto" que **redireciona para a ficha 360° do aluno** para confirmação (não registra direto)
+   - Quando não há inadimplentes: mensagem "✅ Nenhum inadimplente neste mês!"
 
 ### O que falar
-> "O dashboard responde três perguntas: quanto recebi, quanto falta, e quem preciso cobrar. Cada devedor aparece num card — você pode apertar o WhatsApp pra mandar mensagem ou apertar Pago se já recebeu. Sem abrir outra tela."
+> "O dashboard responde três perguntas: quanto recebi, quanto falta, e quem preciso cobrar. A variação de receita é calculada automaticamente com base no mês anterior — nada de dado fixo. Cada inadimplente aparece num card — WhatsApp pra cobrar, e o botão de pagamento leva pra ficha do aluno pra confirmar antes de registrar."
 
 ---
 
@@ -53,11 +59,19 @@
 - Filtros: por status (ativo/inativo), por turma, por vencimento.
 - Clicar em "Ver Ficha" de um aluno.
 
-### 4.3 Mostrar Ficha 360°
+### 4.3 Mostrar Ficha 360° (aprimorada)
 - **Aba Dados:** Status, turma, contato, vencimento, responsável.
-- **Aba Pagamentos:** Histórico com botão "💰 Pago" nos pendentes.
-- **Aba Presenças:** Presenças e faltas do mês.
-- **Aba Graduações:** Histórico de faixas.
+- **Aba Pagamentos (nova):**
+  - Métricas no topo: Pagos / Pendentes / Total recebido no período.
+  - Formulário expansível "Registrar Pagamento" (mês/valor) com confirmação.
+  - Seção "Pendentes" com botão "Marcar como Pago" em cada item.
+  - Tabela de histórico completo de pagamentos.
+  - Quando vindo da tela de Cobranças, exibe formulário de confirmação em destaque antes das abas.
+- **Aba Presenças:** removida (funcionalidade oculta).
+- **Aba Graduações (nova):**
+  - Graduação atual exibida em destaque.
+  - Formulário expansível para registrar nova graduação (nível/data/observação).
+  - Histórico completo de graduações.
 
 ### 4.4 Mostrar Edição
 - Editar algum campo de um aluno → salvar → mostrar o **toast de confirmação** que aparece.
@@ -67,28 +81,23 @@
 
 ---
 
-## 5. Presenças — Chamada Invertida (1min)
+## 5. ~~Presenças~~ (Oculto)
 
-### O que mostrar
-1. Selecionar a **turma** e a **data** (formato DD/MM/YYYY).
-2. Mostrar que **todos os alunos já aparecem como presentes**.
-3. Desmarcar 1 ou 2 alunos que faltaram.
-4. Clicar "Salvar" → toast de confirmação.
-
-### O que falar
-> "A chamada é invertida: todo mundo começa como presente, você só marca quem faltou. Numa turma de 15 onde 2 faltaram, são 2 cliques em vez de 13."
+> **Funcionalidade de presenças foi ocultada da plataforma.** Não há mais:
+> - Página de presenças na navegação
+> - KPI de presenças no dashboard
+> - Botão "Registrar Presenças" nas ações rápidas
+> - Aba Presenças na ficha 360°
+>
+> O código do serviço (`presencas_service.py`) e da página (`presencas.py`) permanecem no projeto para reativação futura.
 
 ---
 
-## 6. Pagamentos — O Coração do Sistema (3min)
+## 6. Pagamentos — Cobranças Simplificadas (2min)
 
-**Essa é a parte mais importante do vídeo.** Mostrar as 4 abas com calma.
+**Essa é a parte mais importante do vídeo.** A página agora tem apenas **2 abas** — foco total em cobrança.
 
-### 6.1 Aba "Todos"
-- Mostrar a lista com filtros: por mês, por turma, por status, busca por nome.
-- Mostrar um expander de aluno com seus pagamentos e o botão "💰 Pago".
-
-### 6.2 Aba "A Cobrar" ⭐ REGRA AUTOMÁTICA
+### 6.1 Aba "A Cobrar" ⭐ REGRA AUTOMÁTICA
 **Mostrar e explicar a regra:**
 
 O sistema calcula automaticamente quem deve ser cobrado, baseado no dia do mês:
@@ -100,14 +109,14 @@ O sistema calcula automaticamente quem deve ser cobrado, baseado no dia do mês:
 Cada aluno aparece num **card com borda** contendo:
 - Nome, turma, dia do vencimento
 - Link pro WhatsApp
-- Botão "💰 Registrar Pgto" (registra como pago em 1 clique)
+- Botão "💰 Registrar Pgto" → **redireciona para a ficha 360° do aluno** (aba Pagamentos) para confirmação antes de registrar
 
 Mostra também um contador de dias restantes pro vencimento.
 
 ### O que falar
-> "Essa aba é 100% automática. Você não precisa filtrar nem calcular nada. O sistema sabe que hoje é dia X, então mostra só quem precisa ser cobrado agora. Quando o aluno pagar, um clique e some da lista."
+> "Essa aba é 100% automática. O sistema sabe que hoje é dia X, então mostra só quem precisa ser cobrado agora. O botão de pagamento leva pra ficha do aluno — você confirma o valor antes de registrar. Sem pagamento acidental."
 
-### 6.3 Aba "Inadimplentes" ⭐ REGRA AUTOMÁTICA
+### 6.2 Aba "Inadimplentes" ⭐ REGRA AUTOMÁTICA
 **Mostrar e explicar a regra:**
 
 O sistema calcula automaticamente quem está inadimplente:
@@ -115,18 +124,13 @@ O sistema calcula automaticamente quem está inadimplente:
 - Se hoje é dia **16:** alunos com vencimento dia 10 **e** 15 sem pagamento → inadimplentes
 - Se hoje é dia **26:** alunos com vencimento dia 10, 15 **e** 25 sem pagamento → inadimplentes
 
-A lista agrupa por dia de vencimento e mostra **quantos dias de atraso** cada um tem. Cada aluno tem o botão "💰 Registrar Pgto" no card.
+A lista agrupa por dia de vencimento e mostra **quantos dias de atraso** cada um tem. Cada aluno tem o botão "💰 Registrar Pgto" que também redireciona para a ficha 360°.
 
 ### O que falar
 > "Inadimplentes são calculados automaticamente — passou do dia de vencimento e não pagou, aparece aqui. O agrupamento por dia de vencimento facilita a cobrança em bloco."
 
-### 6.4 Aba "Cadastrar"
-- Mostrar o formulário: selecionar aluno (com filtro por turma), mês, valor.
-- O **status sempre é 'pago'** — não tem seletor de status porque pagamento cadastrado manualmente é porque já foi recebido.
-- O seletor de mês limita até o **mês atual** (não mostra meses futuros).
-
-### O que falar
-> "Essa aba é pra registrar um pagamento que você já recebeu. Por isso o status é sempre pago — se o aluno não pagou, ele aparece automaticamente nas abas A Cobrar ou Inadimplentes."
+### ❌ Abas removidas
+- **"Todos"** e **"Cadastrar"** foram removidas desta página. O registro de pagamento agora é feito exclusivamente pela **ficha 360° do aluno** (aba Pagamentos), garantindo confirmação antes de salvar.
 
 ---
 
@@ -177,6 +181,11 @@ A lista agrupa por dia de vencimento e mostra **quantos dias de atraso** cada um
 | Busca global na sidebar | Digita o nome → abre a ficha do aluno |
 | Datas DD/MM/YYYY | Formato brasileiro em todos os campos |
 | Formulário limpo | Campos essenciais primeiro, detalhes opcionais |
+| Sidebar simplificada | Apenas Dashboard + Busca + Histórico + Sair |
+| Ficha 360° aprimorada | Pagamentos com form/métricas, Graduações com form (Presenças oculta) |
+| Variação % real | Receita compara com mês anterior automaticamente (não mais hardcoded) |
+| Fluxo de confirmação | Registrar pagamento sempre passa pela ficha 360° antes de salvar |
+| Cobranças focadas | Página de pagamentos só mostra A Cobrar + Inadimplentes |
 
 ---
 
@@ -185,13 +194,16 @@ A lista agrupa por dia de vencimento e mostra **quantos dias de atraso** cada um
 | Antes | Agora |
 |-------|-------|
 | Cadastro de aluno: ~2 min (muitos campos) | Cadastro rápido: ~10 seg (3 campos) |
-| Marcar pagamento: abrir formulário + preencher | 1 clique no "💰 Pago" |
+| Marcar pagamento: abrir formulário + preencher | Ficha 360° com confirmação antes de registrar |
 | Saber quem cobrar: procurar manualmente | Aba "A Cobrar" calculada automaticamente |
 | Saber quem está inadimplente: planilha Excel | Aba "Inadimplentes" calculada automaticamente |
-| Chamada: marcar todos presentes um a um | Marcar só quem faltou (chamada invertida) |
+| Chamada: marcar todos presentes um a um | ~~Oculto~~ (funcionalidade de presenças desativada) |
 | Graduação: editar aluno a aluno | Promoção em lote da turma toda |
 | Buscar aluno: navegar menus + filtrar | Digitar nome na sidebar |
-| Ver tudo do aluno: alternar entre páginas | Ficha 360° com 4 abas |
+| Ver tudo do aluno: alternar entre páginas | Ficha 360° com 3 abas (Dados, Pagamentos, Graduações) |
+| Sidebar com 6+ páginas | Sidebar limpa: Dashboard + Busca |
+| Comparação de receita: dado fake (+12%) | Variação % real calculada mês a mês |
+| Pagamento registrado sem confirmação | Fluxo seguro: cobrança → ficha 360° → confirmar |
 
 ---
 

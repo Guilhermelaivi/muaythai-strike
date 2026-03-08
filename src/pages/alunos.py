@@ -838,8 +838,80 @@ def _mostrar_ficha_360(aluno_id: str):
             st.error("❌ Aluno não encontrado!")
             return
 
-        tab_dados, tab_pag, tab_pres, tab_grad = st.tabs(
-            ["📝 Dados", "💰 Pagamentos", "✅ Presenças", "🥋 Graduações"]
+        # Se veio da tela de cobranças, mostrar formulário de pagamento em destaque
+        veio_de_cobranca = st.session_state.pop('ficha_tab_default', None) == 'pagamentos'
+        if veio_de_cobranca:
+            st.markdown("### 💰 Registrar Pagamento")
+            st.info(f"Aluno: **{aluno.get('nome', '')}** | Turma: {aluno.get('turma', 'N/A')} | Venc: dia {aluno.get('vencimentoDia', 'N/A')}")
+            pag_service = PagamentosService()
+            cache_manager = get_cache_manager()
+            hoje = date.today()
+            _nomes_meses = {
+                1: 'Janeiro', 2: 'Fevereiro', 3: 'Março', 4: 'Abril',
+                5: 'Maio', 6: 'Junho', 7: 'Julho', 8: 'Agosto',
+                9: 'Setembro', 10: 'Outubro', 11: 'Novembro', 12: 'Dezembro'
+            }
+            modo = st.session_state.get('data_mode', 'operacional')
+            min_ano = 2026 if modo == 'operacional' else 2020
+            opcoes_ym = []
+            for a in range(min_ano, hoje.year + 1):
+                for m in range(1, 13):
+                    if a == hoje.year and m > hoje.month:
+                        break
+                    opcoes_ym.append((a, m, f"{a}-{m:02d} ({_nomes_meses[m]})"))
+
+            col_ym, col_val = st.columns(2)
+            with col_ym:
+                default_idx = next(
+                    (i for i, (a, m, _) in enumerate(opcoes_ym) if a == max(hoje.year, min_ano) and m == hoje.month),
+                    0
+                )
+                ym_sel = st.selectbox(
+                    "Mês/Ano de Referência",
+                    options=opcoes_ym,
+                    index=default_idx,
+                    format_func=lambda x: x[2],
+                    key=f"cobranca_pag_ym_{aluno_id}"
+                )
+            with col_val:
+                valor_pag = st.number_input(
+                    "Valor (R$)",
+                    min_value=0.01, step=0.01, format="%.2f", value=150.0,
+                    key=f"cobranca_pag_val_{aluno_id}"
+                )
+
+            col_btn1, col_btn2 = st.columns(2)
+            with col_btn1:
+                if st.button("✅ Confirmar Pagamento", key=f"cobranca_pag_btn_{aluno_id}", type="primary", use_container_width=True):
+                    ano_ref, mes_ref = ym_sel[0], ym_sel[1]
+                    existente = pag_service.buscar_pagamento_por_aluno_mes(aluno_id, ano_ref, mes_ref)
+                    if existente:
+                        st.warning(f"⚠️ Já existe pagamento para {mes_ref:02d}/{ano_ref}")
+                    else:
+                        dados = {
+                            'alunoId': aluno_id,
+                            'alunoNome': aluno.get('nome', ''),
+                            'ano': ano_ref,
+                            'mes': mes_ref,
+                            'valor': valor_pag,
+                            'status': 'pago',
+                            'exigivel': True
+                        }
+                        pag_service.criar_pagamento(dados)
+                        cache_manager.invalidate_pagamento_cache(f"{ano_ref:04d}-{mes_ref:02d}")
+                        st.toast(f"✅ Pagamento de {aluno.get('nome', '')} registrado! R$ {valor_pag:.2f} — {mes_ref:02d}/{ano_ref}")
+                        # Voltar para pagamentos
+                        st.session_state.current_page = "💰 Pagamentos"
+                        st.rerun()
+            with col_btn2:
+                if st.button("← Cancelar", key="cobranca_cancelar", use_container_width=True):
+                    st.session_state.current_page = "💰 Pagamentos"
+                    st.rerun()
+
+            st.divider()
+
+        tab_dados, tab_pag, tab_grad = st.tabs(
+            ["📝 Dados", "💰 Pagamentos", "🥋 Graduações"]
         )
 
         # --- Aba Dados ---
@@ -872,11 +944,102 @@ def _mostrar_ficha_360(aluno_id: str):
         with tab_pag:
             try:
                 pag_service = PagamentosService()
+                cache_manager = get_cache_manager()
                 pagamentos = pag_service.listar_pagamentos_por_aluno(aluno_id)
-                if not pagamentos:
-                    st.info("Nenhum pagamento registrado.")
-                else:
-                    pagamentos.sort(key=lambda x: x.get('ym', ''), reverse=True)
+
+                # Resumo rápido
+                total_pago = sum(1 for p in pagamentos if p.get('status') == 'pago')
+                total_pendente = sum(1 for p in pagamentos if p.get('status') in ('devedor', 'inadimplente'))
+                valor_total = sum(p.get('valor', 0) for p in pagamentos if p.get('status') == 'pago')
+                m1, m2, m3 = st.columns(3)
+                with m1:
+                    st.metric("Pagos", total_pago)
+                with m2:
+                    st.metric("Pendentes", total_pendente)
+                with m3:
+                    st.metric("Total recebido", f"R$ {valor_total:,.2f}")
+
+                # Registrar novo pagamento
+                with st.expander("➕ Registrar Pagamento", expanded=False):
+                    hoje = date.today()
+                    _nomes_meses = {
+                        1: 'Janeiro', 2: 'Fevereiro', 3: 'Março', 4: 'Abril',
+                        5: 'Maio', 6: 'Junho', 7: 'Julho', 8: 'Agosto',
+                        9: 'Setembro', 10: 'Outubro', 11: 'Novembro', 12: 'Dezembro'
+                    }
+                    modo = st.session_state.get('data_mode', 'operacional')
+                    min_ano = 2026 if modo == 'operacional' else 2020
+                    opcoes_ym = []
+                    for a in range(min_ano, hoje.year + 1):
+                        for m in range(1, 13):
+                            if a == hoje.year and m > hoje.month:
+                                break
+                            opcoes_ym.append((a, m, f"{a}-{m:02d} ({_nomes_meses[m]})"))
+
+                    col_ym, col_val = st.columns(2)
+                    with col_ym:
+                        default_idx = next(
+                            (i for i, (a, m, _) in enumerate(opcoes_ym) if a == max(hoje.year, min_ano) and m == hoje.month),
+                            0
+                        )
+                        ym_sel = st.selectbox(
+                            "Mês/Ano",
+                            options=opcoes_ym,
+                            index=default_idx,
+                            format_func=lambda x: x[2],
+                            key=f"ficha_pag_ym_{aluno_id}"
+                        )
+                    with col_val:
+                        valor_pag = st.number_input(
+                            "Valor (R$)",
+                            min_value=0.01, step=0.01, format="%.2f", value=150.0,
+                            key=f"ficha_pag_val_{aluno_id}"
+                        )
+
+                    if st.button("✅ Registrar Pagamento", key=f"ficha_pag_btn_{aluno_id}", type="primary", use_container_width=True):
+                        ano_ref, mes_ref = ym_sel[0], ym_sel[1]
+                        # Verificar se já existe
+                        existente = pag_service.buscar_pagamento_por_aluno_mes(aluno_id, ano_ref, mes_ref)
+                        if existente:
+                            st.warning(f"⚠️ Já existe pagamento para {mes_ref:02d}/{ano_ref}")
+                        else:
+                            dados = {
+                                'alunoId': aluno_id,
+                                'alunoNome': aluno.get('nome', ''),
+                                'ano': ano_ref,
+                                'mes': mes_ref,
+                                'valor': valor_pag,
+                                'status': 'pago',
+                                'exigivel': True
+                            }
+                            pag_service.criar_pagamento(dados)
+                            cache_manager.invalidate_pagamento_cache(f"{ano_ref:04d}-{mes_ref:02d}")
+                            st.toast(f"✅ Pagamento {mes_ref:02d}/{ano_ref} registrado!")
+                            st.rerun()
+
+                st.divider()
+
+                # Ações rápidas para pendentes
+                if total_pendente > 0:
+                    st.markdown("##### Pendentes")
+                    for p in pagamentos:
+                        if p.get('status') in ('devedor', 'inadimplente'):
+                            c1, c2 = st.columns([4, 2])
+                            with c1:
+                                emoji = '🔴' if p.get('status') == 'inadimplente' else '🔔'
+                                label = 'Inadimplente' if p.get('status') == 'inadimplente' else 'A Cobrar'
+                                st.markdown(f"{emoji} **{p.get('ym', '')}** — R$ {p.get('valor', 0):.2f} ({label})")
+                            with c2:
+                                if st.button("💰 Marcar Pago", key=f"ficha_pag_{p.get('id')}", use_container_width=True):
+                                    pag_service.marcar_como_pago(p.get('id'))
+                                    cache_manager.invalidate_pagamento_cache(p.get('ym'))
+                                    st.toast(f"✅ Pagamento {p.get('ym')} marcado como pago!")
+                                    st.rerun()
+                    st.divider()
+
+                # Histórico completo
+                if pagamentos:
+                    st.markdown("##### Histórico")
                     STATUS_MAP = {
                         'pago': '🟢 Pago', 'devedor': '🔔 A Cobrar',
                         'inadimplente': '🔴 Inadimplente', 'ausente': '⚪ Ausente'
@@ -890,56 +1053,61 @@ def _mostrar_ficha_360(aluno_id: str):
                         df_pag, hide_index=True, use_container_width=True,
                         column_config={'Valor': st.column_config.NumberColumn(format="R$ %.2f")},
                     )
-                    # Ação rápida para pendentes
-                    pendentes = [p for p in pagamentos if p.get('status') in ('devedor', 'inadimplente')]
-                    if pendentes:
-                        cache_manager = get_cache_manager()
-                        for p in pendentes:
-                            c1, c2 = st.columns([4, 2])
-                            with c1:
-                                emoji = '🔴' if p.get('status') == 'inadimplente' else '🔔'
-                                st.markdown(f"{emoji} {p.get('ym', '')} — R$ {p.get('valor', 0):.2f}")
-                            with c2:
-                                if st.button("💰 Pago", key=f"ficha_pag_{p.get('id')}", use_container_width=True):
-                                    pag_service.marcar_como_pago(p.get('id'))
-                                    cache_manager.invalidate_pagamento_cache(p.get('ym'))
-                                    st.toast(f"✅ Pagamento {p.get('ym')} marcado como pago!")
-                                    st.rerun()
+                else:
+                    st.info("Nenhum pagamento registrado.")
             except Exception as e:
                 st.error(f"Erro ao carregar pagamentos: {e}")
-
-        # --- Aba Presenças ---
-        with tab_pres:
-            try:
-                pres_service = PresencasService()
-                hoje = date.today()
-                ym_atual = f"{hoje.year}-{hoje.month:02d}"
-                relatorio = pres_service.obter_relatorio_mensal(ym_atual)
-                detalhes = relatorio.get('detalhes', {})
-                # detalhes is a dict with 'presentes' and 'faltas' lists
-                presentes_list = detalhes.get('presentes', []) if isinstance(detalhes, dict) else []
-                faltas_list = detalhes.get('faltas', []) if isinstance(detalhes, dict) else []
-                total_p = sum(1 for r in presentes_list if r.get('alunoId') == aluno_id)
-                total_f = sum(1 for r in faltas_list if r.get('alunoId') == aluno_id)
-                c1, c2 = st.columns(2)
-                with c1:
-                    st.metric("✅ Presenças (mês)", total_p)
-                with c2:
-                    st.metric("❌ Faltas (mês)", total_f)
-                if total_p == 0 and total_f == 0:
-                    st.info(f"Nenhum registro de presença em {ym_atual}.")
-            except Exception as e:
-                st.error(f"Erro ao carregar presenças: {e}")
 
         # --- Aba Graduações ---
         with tab_grad:
             try:
                 grad_service = st.session_state.get('graduacoes_service') or GraduacoesService()
                 historico = grad_service.listar_graduacoes_aluno(aluno_id)
+
+                st.write(f"**Graduação atual:** {aluno.get('graduacao', 'Sem Graduação')}")
+
+                # Formulário para registrar nova graduação
+                with st.expander("🥋 Registrar Nova Graduação", expanded=not bool(historico)):
+                    niveis = grad_service.obter_niveis_graduacao_disponiveis()
+                    col_n, col_d = st.columns(2)
+                    with col_n:
+                        novo_nivel = st.selectbox(
+                            "Novo nível",
+                            options=niveis,
+                            key=f"ficha_grad_nivel_{aluno_id}"
+                        )
+                    with col_d:
+                        data_grad = st.date_input(
+                            "Data da graduação",
+                            value=date.today(),
+                            key=f"ficha_grad_data_{aluno_id}",
+                            format="DD/MM/YYYY"
+                        )
+                    obs_grad = st.text_input(
+                        "Observações (opcional)",
+                        key=f"ficha_grad_obs_{aluno_id}",
+                        placeholder="Ex: Exame realizado com excelência"
+                    )
+                    if st.button("✅ Registrar Graduação", key=f"ficha_grad_btn_{aluno_id}", type="primary", use_container_width=True):
+                        try:
+                            grad_service.registrar_graduacao(
+                                aluno_id,
+                                novo_nivel,
+                                data_grad,
+                                obs_grad.strip() if obs_grad and obs_grad.strip() else None
+                            )
+                            st.toast(f"✅ Graduação registrada: {novo_nivel}")
+                            st.rerun()
+                        except Exception as eg:
+                            st.error(f"Erro ao registrar graduação: {eg}")
+
+                st.divider()
+
+                # Histórico
                 if not historico:
                     st.info("Nenhuma graduação registrada.")
                 else:
-                    st.write(f"**Atual:** {aluno.get('graduacao', 'N/A')}")
+                    st.markdown("##### Histórico")
                     for idx, grad in enumerate(reversed(historico), 1):
                         obs_g = f" — _{grad.get('obs')}_" if grad.get('obs') else ""
                         st.markdown(f"{idx}. **{grad.get('nivel', 'N/A')}** — {grad.get('data', 'N/A')}{obs_g}")

@@ -44,18 +44,14 @@ def show_pagamentos():
         return
     
     # Navegação por tabs (sem rerun ao trocar de aba)
-    tab_todos, tab_cobrar, tab_inadim, tab_cadastrar = st.tabs(
-        ["📋 Todos", "🔔 A Cobrar", "🔴 Inadimplentes", "➕ Cadastrar"]
+    tab_cobrar, tab_inadim = st.tabs(
+        ["🔔 A Cobrar", "🔴 Inadimplentes"]
     )
     
-    with tab_todos:
-        _mostrar_lista_pagamentos_filtrada(pagamentos_service, alunos_service)
     with tab_cobrar:
         _mostrar_devedores(pagamentos_service)
     with tab_inadim:
         _mostrar_inadimplentes(pagamentos_service)
-    with tab_cadastrar:
-        _mostrar_formulario_novo_pagamento(pagamentos_service, alunos_service)
 
 def _mostrar_lista_pagamentos_filtrada(pagamentos_service: PagamentosService, alunos_service: AlunosService):
     """Mostra lista unificada de pagamentos com filtros por turma e status"""
@@ -867,23 +863,11 @@ def _mostrar_devedores(pagamentos_service: PagamentosService):
                     st.caption(f"Venc: dia {vencimento_alvo}")
                 with c_acao:
                     if st.button("💰 Registrar Pgto", key=f"cobrar_{aluno_id}", use_container_width=True):
-                        # Criar pagamento como pago direto
-                        try:
-                            dados = {
-                                'alunoId': aluno_id,
-                                'alunoNome': nome,
-                                'ano': ano_atual,
-                                'mes': mes_atual,
-                                'valor': 150.0,
-                                'status': 'pago',
-                                'exigivel': True
-                            }
-                            pagamentos_service.criar_pagamento(dados)
-                            cache_manager.invalidate_pagamento_cache(ym_atual)
-                            st.toast(f"✅ Pagamento de {nome} registrado!")
-                            st.rerun()
-                        except Exception as e:
-                            st.error(f"Erro: {e}")
+                        st.session_state.current_page = "👥 Alunos"
+                        st.session_state.alunos_modo = 'lista'
+                        st.session_state.busca_aluno_id = aluno_id
+                        st.session_state.ficha_tab_default = 'pagamentos'
+                        st.rerun()
     
     except Exception as e:
         st.error(f"❌ Erro ao carregar a cobrar: {str(e)}")
@@ -989,22 +973,11 @@ def _mostrar_inadimplentes(pagamentos_service: PagamentosService):
                         st.caption(f"Atraso: {aluno.get('_dias_atraso', 0)} dia(s)")
                     with c_acao:
                         if st.button("💰 Registrar Pgto", key=f"inadim_{aluno_id}", use_container_width=True):
-                            try:
-                                dados = {
-                                    'alunoId': aluno_id,
-                                    'alunoNome': nome,
-                                    'ano': ano_atual,
-                                    'mes': mes_atual,
-                                    'valor': 150.0,
-                                    'status': 'pago',
-                                    'exigivel': True
-                                }
-                                pagamentos_service.criar_pagamento(dados)
-                                cache_manager.invalidate_pagamento_cache(ym_atual)
-                                st.toast(f"✅ Pagamento de {nome} registrado!")
-                                st.rerun()
-                            except Exception as e:
-                                st.error(f"Erro: {e}")
+                            st.session_state.current_page = "👥 Alunos"
+                            st.session_state.alunos_modo = 'lista'
+                            st.session_state.busca_aluno_id = aluno_id
+                            st.session_state.ficha_tab_default = 'pagamentos'
+                            st.rerun()
     
     except Exception as e:
         st.error(f"❌ Erro ao carregar inadimplentes: {str(e)}")
